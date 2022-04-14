@@ -1,0 +1,17 @@
+id: trigger
+namespace: io.kestra.tests
+
+triggers:
+  - id: watch
+    type: io.kestra.plugin.mqtt.Trigger
+    topic: test/trigger
+    server: tcp://localhost:1883
+    serdeType: JSON
+    version: V5
+    maxRecords: 1
+    interval: PT1S
+
+tasks:
+  - id: end
+    type: io.kestra.core.tasks.debugs.Return
+    format: "{{task.id}} > {{taskrun.startDate}}"
