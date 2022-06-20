@@ -5,6 +5,7 @@ import io.kestra.core.models.executions.Execution;
 import io.kestra.core.queues.QueueFactoryInterface;
 import io.kestra.core.queues.QueueInterface;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
+import io.kestra.core.runners.FlowListeners;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.schedulers.AbstractScheduler;
 import io.kestra.core.schedulers.DefaultScheduler;
@@ -13,7 +14,6 @@ import io.kestra.core.schedulers.SchedulerTriggerStateInterface;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
 import io.kestra.plugin.mqtt.services.SerdeType;
-import io.kestra.runner.memory.MemoryFlowListeners;
 import io.micronaut.context.ApplicationContext;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
@@ -42,7 +42,7 @@ class TriggerTest {
     private SchedulerExecutionStateInterface executionState;
 
     @Inject
-    private MemoryFlowListeners flowListenersService;
+    private FlowListeners flowListenersService;
 
     @Inject
     @Named(QueueFactoryInterface.EXECUTION_NAMED)
