@@ -40,9 +40,9 @@ class SuiteTest {
             .serdeType(SerdeType.JSON)
             .retain(true)
             .version(version)
-            .from(Map.of(
-                "message", "hello here"
-            ))
+            .from(List.of(Map.of(
+                "message", "{{ \"apple\" ~ \"pear\" ~ \"banana\" }}"
+            )))
             .build();
 
         Publish.Output publishOutput = publish.run(runContext);
@@ -70,7 +70,7 @@ class SuiteTest {
         assertThat(result.get(0).get("retain"), is(true));
 
         Map<String, Object> value = (Map<String, Object>) result.get(0).get("payload");
-        assertThat(value.get("message"), is("hello here"));
+        assertThat(value.get("message"), is("applepearbanana"));
     }
 
     @Test
