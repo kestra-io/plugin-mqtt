@@ -18,12 +18,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import javax.validation.constraints.NotNull;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import javax.validation.constraints.NotNull;
+import java.util.Map;
+
+import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @SuperBuilder
 @ToString
@@ -59,8 +62,8 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
 
     @Schema(
         title = "Source of message send",
-        description = "Can be an internal storage uri, a map or a list." +
-            "with the following format: key, value, partition, timestamp, headers"
+        description = "Can be an internal storage uri, a map or a list.",
+        anyOf = {String.class, Object[].class, Map.class }
     )
     @NotNull
     @PluginProperty(dynamic = true)
@@ -98,7 +101,16 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
                     flowable = Flowable.create(FileSerde.reader(inputStream), BackpressureStrategy.BUFFER);
                 }
             } else {
-                flowable = Flowable.fromArray(((List<Object>) this.from).toArray());
+                flowable = Flowable.fromArray(((List<?>) this.from).stream()
+                    .map(throwFunction(row -> {
+                        if (row instanceof Map) {
+                            return runContext.render((Map<String, Object>) row);
+                        } else if (row instanceof String) {
+                            return runContext.render((String) row);
+                        } else {
+                            return row;
+                        }
+                    })).toArray());
             }
 
             Flowable<Integer> resultFlowable = flowable.map(row -> {
@@ -110,7 +122,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
                 .reduce(Integer::sum)
                 .blockingGet();
         } else {
-            connection.publish(runContext, this, this.serialize(this.from));
+            connection.publish(runContext, this, this.serialize(runContext.render((Map<String, Object>) this.from)));
         }
 
         runContext.metric(Counter.of("records", count, "topic", topic));
