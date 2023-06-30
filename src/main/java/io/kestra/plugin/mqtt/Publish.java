@@ -75,7 +75,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
             "payload e.g. `null` will clear the retained message from the server."
     )
     @NotNull
-    @PluginProperty(dynamic = false)
+    @PluginProperty
     @Builder.Default
     private Boolean retain = false;
 
