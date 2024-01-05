@@ -12,13 +12,14 @@ import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import jakarta.validation.constraints.NotNull;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -94,14 +95,14 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
         String topic = runContext.render(this.topic);
 
         if (this.from instanceof String || this.from instanceof List) {
-            Flowable<Object> flowable;
+            Flux<Object> flowable;
             if (this.from instanceof String) {
                 URI from = new URI(runContext.render((String) this.from));
                 try (BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.uriToInputStream(from)))) {
-                    flowable = Flowable.create(FileSerde.reader(inputStream), BackpressureStrategy.BUFFER);
+                    flowable = Flux.create(FileSerde.reader(inputStream), FluxSink.OverflowStrategy.BUFFER);
                 }
             } else {
-                flowable = Flowable.fromArray(((List<?>) this.from).stream()
+                flowable = Flux.fromArray(((List<?>) this.from).stream()
                     .map(throwFunction(row -> {
                         if (row instanceof Map) {
                             return runContext.render((Map<String, Object>) row);
@@ -113,14 +114,14 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
                     })).toArray());
             }
 
-            Flowable<Integer> resultFlowable = flowable.map(row -> {
+            Flux<Integer> resultFlowable = flowable.map(throwFunction(row -> {
                 connection.publish(runContext, this, this.serialize(row));
                 return 1;
-            });
+            }));
 
             count = resultFlowable
                 .reduce(Integer::sum)
-                .blockingGet();
+                .block();
         } else {
             connection.publish(runContext, this, this.serialize(runContext.render((Map<String, Object>) this.from)));
         }
