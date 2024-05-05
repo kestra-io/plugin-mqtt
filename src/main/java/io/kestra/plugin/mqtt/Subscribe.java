@@ -7,12 +7,17 @@ import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
+import io.kestra.plugin.mqtt.services.Message;
 import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -25,8 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.kestra.core.utils.Rethrow.throwConsumer;
-import static io.kestra.core.utils.Rethrow.throwRunnable;
+import static io.kestra.core.utils.Rethrow.*;
 
 @SuperBuilder
 @ToString
@@ -111,6 +115,38 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
                 thread.interrupt();
             }
         }
+    }
+
+    public Publisher<Message> stream(RunContext runContext) throws Exception {
+        MqttInterface connection = MqttFactory.create(runContext, this);
+
+        return Flux.<Message>create(fluxSink -> {
+                try {
+                    Map<String, Integer> count = new HashMap<>();
+                    AtomicInteger total = new AtomicInteger();
+                    ZonedDateTime started = ZonedDateTime.now();
+
+                    connection.subscribe(runContext, this, message -> {
+                        fluxSink.next(message);
+
+                        total.getAndIncrement();
+                        count.compute(message.getTopic(), (s, records) -> records == null ? 1 : records + 1);
+                    });
+
+                    fluxSink.onDispose(() -> {
+	                    try {
+                            count.forEach((topic, records) -> runContext.metric(Counter.of("records", records, "topic", topic)));
+		                    connection.unsubscribe(runContext, this);
+	                    } catch (Exception e) {
+		                    fluxSink.error(e);
+	                    }
+                    });
+
+                } catch (Throwable e) {
+                    fluxSink.error(e);
+                }
+            }, FluxSink.OverflowStrategy.BUFFER)
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     @SuppressWarnings("unchecked")
