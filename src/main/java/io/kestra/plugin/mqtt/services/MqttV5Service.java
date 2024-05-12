@@ -25,7 +25,7 @@ public class MqttV5Service implements MqttInterface {
 
     @Getter
     @Setter
-    private String ca;
+    private String crt;
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception {
@@ -54,8 +54,8 @@ public class MqttV5Service implements MqttInterface {
                 connectOptions.setPassword(runContext.render(connection.getPassword()).getBytes(StandardCharsets.UTF_8));
             }
 
-            if (!StringUtils.isBlank(ca) && Path.of(ca).toFile().exists()) {
-                connectOptions.setSocketFactory(CustomSSLSocketFactory.createSSLSocketFactory(ca));
+            if (!StringUtils.isBlank(crt) && Path.of(crt).toFile().exists()) {
+                connectOptions.setSocketFactory(CustomSSLSocketFactory.createSSLSocketFactory(crt));
             }
 
             if (connection.getHttpsHostnameVerificationEnabled() != null) {

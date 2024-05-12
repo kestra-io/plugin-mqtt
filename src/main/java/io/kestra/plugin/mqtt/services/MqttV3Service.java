@@ -22,7 +22,7 @@ public class MqttV3Service implements MqttInterface {
 
     @Getter
     @Setter
-    private String ca;
+    private String crt;
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception {
@@ -47,8 +47,8 @@ public class MqttV3Service implements MqttInterface {
                 connectOptions.setPassword(runContext.render(connection.getPassword()).toCharArray());
             }
 
-            if (!StringUtils.isBlank(ca) && Path.of(ca).toFile().exists()) {
-                SSLSocketFactory socketFactory = CustomSSLSocketFactory.createSSLSocketFactory(ca);
+            if (!StringUtils.isBlank(crt) && Path.of(crt).toFile().exists()) {
+                SSLSocketFactory socketFactory = CustomSSLSocketFactory.createSSLSocketFactory(crt);
                 connectOptions.setCleanSession(true);
                 connectOptions.setConnectionTimeout(60);
                 connectOptions.setKeepAliveInterval(60);

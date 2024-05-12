@@ -7,13 +7,13 @@ public abstract class MqttFactory {
     public static MqttInterface create(RunContext runContext, AbstractMqttConnection connection, String caUri) throws Exception {
         if (connection.getVersion() == AbstractMqttConnection.Version.V5) {
             MqttV5Service mqttV5Service = new MqttV5Service();
-            mqttV5Service.setCa(caUri);
+            mqttV5Service.setCrt(caUri);
             mqttV5Service.connect(runContext, connection);
 
             return mqttV5Service;
         } else {
             MqttV3Service mqttV3Service = new MqttV3Service();
-            mqttV3Service.setCa(caUri);
+            mqttV3Service.setCrt(caUri);
             mqttV3Service.connect(runContext, connection);
 
             return mqttV3Service;

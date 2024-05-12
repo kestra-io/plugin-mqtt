@@ -50,6 +50,19 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 "  type: \"sensors\"",
                 "  value: 1.23",
             }
+        ),
+        @Example(
+            code = {
+                "server: ssl://localhost:8883",
+                "clientId: kestraProducer",
+                "topic: kestra/sensors/cpu",
+                "crt: /home/path/to/ca.crt",
+                "serdeType: JSON",
+                "retain: true",
+                "from: ",
+                "  type: \"sensors\"",
+                "  value: 1.23",
+            }
         )
     }
 )
@@ -62,7 +75,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
     private String topic;
 
     @PluginProperty(dynamic = true)
-    private String ca;
+    private String crt;
 
     @Schema(
         title = "Source of message send",
@@ -91,7 +104,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
     @SuppressWarnings("unchecked")
     @Override
     public Publish.Output run(RunContext runContext) throws Exception {
-        MqttInterface connection = MqttFactory.create(runContext, this, ca);
+        MqttInterface connection = MqttFactory.create(runContext, this, crt);
 
         Integer count = 1;
 

@@ -48,7 +48,7 @@ class SuiteTest {
             .serdeType(SerdeType.JSON)
             .retain(true)
             .version(version)
-            .ca(caUri)
+            .crt(caUri)
             .from(List.of(Map.of(
                 "message", "{{ \"apple\" ~ \"pear\" ~ \"banana\" }}"
             )))
@@ -65,7 +65,7 @@ class SuiteTest {
             .serdeType(SerdeType.JSON)
             .maxRecords(1)
             .version(version)
-            .ca(caUri)
+            .crt(caUri)
             .build();
         Subscribe.Output subscribeOutput = subscribe.run(runContext);
 

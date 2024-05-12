@@ -50,6 +50,18 @@ import static io.kestra.core.utils.Rethrow.*;
                 "serdeType: JSON",
                 "maxRecords: 10",
             }
+        ),
+        @Example(
+            code = {
+                "server: ssl://localhost:8883",
+                "clientId: kestraProducer",
+                "topic: ",
+                " - kestra/sensors/cpu",
+                " - kestra/sensors/mem",
+                "crt: /home/path/to/ca.crt",
+                "serdeType: JSON",
+                "maxRecords: 10",
+            }
         )
     }
 )
@@ -62,7 +74,7 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @Builder.Default
     private Integer qos = 1;
 
-    private String ca;
+    private String crt;
 
     private Integer maxRecords;
 
@@ -70,7 +82,7 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        MqttInterface connection = MqttFactory.create(runContext, this, ca);
+        MqttInterface connection = MqttFactory.create(runContext, this, crt);
 
         File tempFile = runContext.tempFile(".ion").toFile();
         Thread thread = null;
