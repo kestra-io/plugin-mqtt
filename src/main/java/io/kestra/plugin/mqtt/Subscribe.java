@@ -62,13 +62,15 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @Builder.Default
     private Integer qos = 1;
 
+    private String ca;
+
     private Integer maxRecords;
 
     private Duration maxDuration;
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        MqttInterface connection = MqttFactory.create(runContext, this);
+        MqttInterface connection = MqttFactory.create(runContext, this, ca);
 
         File tempFile = runContext.tempFile(".ion").toFile();
         Thread thread = null;

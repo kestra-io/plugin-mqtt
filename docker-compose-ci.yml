@@ -4,7 +4,15 @@ services:
   mosquitto:
     image: eclipse-mosquitto
     volumes:
-      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./docker/non-ssl/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
     ports:
       - '1883:1883'
       - '9001:9001'
+
+#  mosquitto-ssl:
+#    image: eclipse-mosquitto
+#    volumes:
+#      - ./docker/ssl/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+#      - ./docker/ssl/certs:/certs:ro
+#    ports:
+#      - '8883:8883'

@@ -9,10 +9,12 @@ import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,17 +31,24 @@ class SuiteTest {
     private StorageInterface storageInterface;
 
     @SuppressWarnings("unchecked")
-    void run(AbstractMqttConnection.Version version) throws Exception {
+    void run(AbstractMqttConnection.Version version, String caUri) throws Exception {
         RunContext runContext = runContextFactory.of(ImmutableMap.of());
         String topic = IdUtils.create();
 
+        String server = "tcp://localhost:1883";
+
+        if (caUri != null) {
+            server = "ssl://localhost:8883";
+        }
+
         Publish publish = Publish.builder()
-            .server("tcp://localhost:1883")
+            .server(server)
             .clientId(IdUtils.create())
             .topic("test/" + topic)
             .serdeType(SerdeType.JSON)
             .retain(true)
             .version(version)
+            .ca(caUri)
             .from(List.of(Map.of(
                 "message", "{{ \"apple\" ~ \"pear\" ~ \"banana\" }}"
             )))
@@ -50,12 +59,13 @@ class SuiteTest {
         assertThat(publishOutput.getMessagesCount(), is(1));
 
         Subscribe subscribe = Subscribe.builder()
-            .server("tcp://localhost:1883")
+            .server(server)
             .clientId(IdUtils.create())
             .topic("test/" + topic)
             .serdeType(SerdeType.JSON)
             .maxRecords(1)
             .version(version)
+            .ca(caUri)
             .build();
         Subscribe.Output subscribeOutput = subscribe.run(runContext);
 
@@ -75,11 +85,25 @@ class SuiteTest {
 
     @Test
     void v3() throws Exception {
-        this.run(AbstractMqttConnection.Version.V3);
+        this.run(AbstractMqttConnection.Version.V3, null);
     }
 
     @Test
     void v5() throws Exception {
-        this.run(AbstractMqttConnection.Version.V5);
+        this.run(AbstractMqttConnection.Version.V5, null);
+    }
+
+    @Test
+    @Disabled
+    void v3SSL() throws Exception {
+        URL resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
+        this.run(AbstractMqttConnection.Version.V3, resource.toURI().getPath());
+    }
+
+    @Test
+    @Disabled
+    void v5SSL() throws Exception {
+        URL resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
+        this.run(AbstractMqttConnection.Version.V5, resource.toURI().getPath());
     }
 }

@@ -4,6 +4,9 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.AbstractMqttConnection;
 import io.kestra.plugin.mqtt.Publish;
 import io.kestra.plugin.mqtt.Subscribe;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.paho.mqttv5.client.IMqttToken;
 import org.eclipse.paho.mqttv5.client.MqttAsyncClient;
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence;
@@ -13,11 +16,16 @@ import org.eclipse.paho.mqttv5.common.MqttSubscription;
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class MqttV5Service implements MqttInterface {
     MqttAsyncClient client;
+
+    @Getter
+    @Setter
+    private String ca;
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception {
@@ -44,6 +52,10 @@ public class MqttV5Service implements MqttInterface {
 
             if (connection.getPassword() != null) {
                 connectOptions.setPassword(runContext.render(connection.getPassword()).getBytes(StandardCharsets.UTF_8));
+            }
+
+            if (!StringUtils.isBlank(ca) && Path.of(ca).toFile().exists()) {
+                connectOptions.setSocketFactory(CustomSSLSocketFactory.createSSLSocketFactory(ca));
             }
 
             if (connection.getHttpsHostnameVerificationEnabled() != null) {
