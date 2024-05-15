@@ -5,7 +5,6 @@ import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.triggers.*;
-import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.services.Message;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,7 +12,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
@@ -40,7 +38,8 @@ import java.util.List;
                 "maxRecords: 10",
             }
         )
-    }
+    },
+    beta = true
 )
 public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerInterface, TriggerOutput<RealtimeTrigger.Output>, SubscribeInterface, MqttPropertiesInterface {
     @Builder.Default
@@ -78,9 +77,6 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
 
     @Override
     public Publisher<Execution> evaluate(ConditionContext conditionContext, TriggerContext context) throws Exception {
-        RunContext runContext = conditionContext.getRunContext();
-        Logger logger = runContext.logger();
-
         Subscribe task = Subscribe.builder()
             .id(this.id)
             .type(Subscribe.class.getName())
@@ -101,8 +97,7 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
             .build();
 
         return Flux.from(task.stream(conditionContext.getRunContext()))
-            .map(record -> TriggerService.generateRealtimeExecution(this, context, new Output(record)))
-            .next();
+            .map(record -> TriggerService.generateRealtimeExecution(this, context, new Output(record)));
     }
 
     @Getter

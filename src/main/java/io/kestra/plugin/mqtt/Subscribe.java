@@ -16,8 +16,6 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
-import reactor.core.scheduler.Schedulers;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -120,11 +118,10 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     public Publisher<Message> stream(RunContext runContext) throws Exception {
         MqttInterface connection = MqttFactory.create(runContext, this);
 
-        return Flux.<Message>create(fluxSink -> {
+        return Flux.create(fluxSink -> {
                 try {
                     Map<String, Integer> count = new HashMap<>();
                     AtomicInteger total = new AtomicInteger();
-                    ZonedDateTime started = ZonedDateTime.now();
 
                     connection.subscribe(runContext, this, message -> {
                         fluxSink.next(message);
@@ -142,11 +139,10 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
 	                    }
                     });
 
-                } catch (Throwable e) {
+                } catch (Exception e) {
                     fluxSink.error(e);
                 }
-            }, FluxSink.OverflowStrategy.BUFFER)
-            .subscribeOn(Schedulers.boundedElastic());
+            });
     }
 
     @SuppressWarnings("unchecked")
