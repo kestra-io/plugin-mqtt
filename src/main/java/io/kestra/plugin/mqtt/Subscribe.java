@@ -106,7 +106,7 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
 
             return Output.builder()
                 .messagesCount(count.values().stream().mapToInt(Integer::intValue).sum())
-                .uri(runContext.putTempFile(tempFile))
+                .uri(runContext.storage().putFile(tempFile))
                 .build();
         } finally {
             if (thread != null) {
