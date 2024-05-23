@@ -39,7 +39,7 @@ import java.util.Optional;
         )
     }
 )
-public class Trigger extends AbstractTrigger implements PollingTriggerInterface, TriggerOutput<Subscribe.Output>, SubscribeInterface, MqttPropertiesInterface {
+public class Trigger extends AbstractTrigger implements PollingTriggerInterface, TriggerOutput<Subscribe.Output>, SubscribeInterface, ConsumeInterface, MqttPropertiesInterface {
     @Builder.Default
     private final Duration interval = Duration.ofSeconds(60);
 

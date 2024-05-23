@@ -8,8 +8,6 @@ triggers:
     server: tcp://localhost:1883
     serdeType: JSON
     version: V5
-    maxRecords: 1
-    interval: PT1S
 
 tasks:
   - id: end
