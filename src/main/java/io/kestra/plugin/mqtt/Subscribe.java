@@ -53,7 +53,7 @@ import static io.kestra.core.utils.Rethrow.*;
         )
     }
 )
-public class Subscribe extends AbstractMqttConnection implements RunnableTask<Subscribe.Output>, SubscribeInterface, MqttPropertiesInterface {
+public class Subscribe extends AbstractMqttConnection implements RunnableTask<Subscribe.Output>, SubscribeInterface, ConsumeInterface, MqttPropertiesInterface {
     private Object topic;
 
     @Builder.Default
@@ -113,36 +113,6 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
                 thread.interrupt();
             }
         }
-    }
-
-    public Publisher<Message> stream(RunContext runContext) throws Exception {
-        MqttInterface connection = MqttFactory.create(runContext, this);
-
-        return Flux.create(fluxSink -> {
-                try {
-                    Map<String, Integer> count = new HashMap<>();
-                    AtomicInteger total = new AtomicInteger();
-
-                    connection.subscribe(runContext, this, message -> {
-                        fluxSink.next(message);
-
-                        total.getAndIncrement();
-                        count.compute(message.getTopic(), (s, records) -> records == null ? 1 : records + 1);
-                    });
-
-                    fluxSink.onDispose(() -> {
-	                    try {
-                            count.forEach((topic, records) -> runContext.metric(Counter.of("records", records, "topic", topic)));
-		                    connection.unsubscribe(runContext, this);
-	                    } catch (Exception e) {
-		                    fluxSink.error(e);
-	                    }
-                    });
-
-                } catch (Exception e) {
-                    fluxSink.error(e);
-                }
-            });
     }
 
     @SuppressWarnings("unchecked")

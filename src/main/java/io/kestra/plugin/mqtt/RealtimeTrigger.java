@@ -4,8 +4,12 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
+import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.triggers.*;
+import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.services.Message;
+import io.kestra.plugin.mqtt.services.MqttFactory;
+import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -15,7 +19,14 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @SuperBuilder
 @ToString
@@ -42,8 +53,6 @@ import java.util.List;
     beta = true
 )
 public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerInterface, TriggerOutput<RealtimeTrigger.Output>, SubscribeInterface, MqttPropertiesInterface {
-    @Builder.Default
-    private final Duration interval = Duration.ofSeconds(60);
 
     @Builder.Default
     @NotNull
@@ -71,9 +80,13 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
     @Builder.Default
     private Integer qos = 1;
 
-    private Integer maxRecords;
+    @Builder.Default
+    @Getter(AccessLevel.NONE)
+    private final AtomicBoolean isActive = new AtomicBoolean(true);
 
-    private Duration maxDuration;
+    @Builder.Default
+    @Getter(AccessLevel.NONE)
+    private final CountDownLatch waitForTermination = new CountDownLatch(1);
 
     @Override
     public Publisher<Execution> evaluate(ConditionContext conditionContext, TriggerContext context) throws Exception {
@@ -92,12 +105,79 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
             .topic(this.topic)
             .serdeType(this.serdeType)
             .qos(this.qos)
-            .maxRecords(this.maxRecords)
-            .maxDuration(this.maxDuration)
             .build();
 
-        return Flux.from(task.stream(conditionContext.getRunContext()))
+
+        return Flux
+            .from(publisher(task, conditionContext.getRunContext()))
             .map(record -> TriggerService.generateRealtimeExecution(this, context, new Output(record)));
+    }
+
+    public Publisher<Message> publisher(final Subscribe task, final RunContext runContext) throws Exception {
+        MqttInterface connection = MqttFactory.create(runContext, task);
+
+        return Flux.create(emitter -> {
+            try {
+                emitter.onDispose(() -> {
+                    try {
+                        connection.unsubscribe(runContext, task);
+                        connection.close();
+                    } catch (Exception e) {
+                        runContext.logger().warn("Error while closing connection: " + e.getMessage());
+                    } finally {
+                        this.waitForTermination.countDown();
+                    }
+                });
+
+                connection.subscribe(runContext, task, emitter::next);
+
+                busyWait();
+                emitter.complete();
+
+            } catch (Exception e) {
+                emitter.error(e);
+            }
+        });
+    }
+
+    private void busyWait() {
+        while (isActive.get()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                isActive.set(false); // proactively stop consuming
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     **/
+    @Override
+    public void kill() {
+        stop(true);
+    }
+
+    /**
+     * {@inheritDoc}
+     **/
+    @Override
+    public void stop() {
+        stop(false); // must be non-blocking
+    }
+
+    private void stop(boolean wait) {
+        if (!isActive.compareAndSet(true, false)) {
+            return;
+        }
+        if (wait) {
+            try {
+                this.waitForTermination.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     @Getter
@@ -124,7 +204,5 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
             this.payload = message.getPayload();
             this.retain = message.getRetain();
         }
-
     }
-
 }
