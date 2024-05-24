@@ -22,7 +22,7 @@ import java.util.Optional;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Wait for messages on MQTT topics"
+    title = "Consume messages periodically from MQTT topics and create one execution per batch."
 )
 @Plugin(
     examples = {
