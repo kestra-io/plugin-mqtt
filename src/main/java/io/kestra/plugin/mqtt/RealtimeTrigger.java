@@ -43,8 +43,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
                 "maxRecords: 10",
             }
         )
-    },
-    beta = true
+    }
 )
 public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerInterface, TriggerOutput<RealtimeTrigger.Output>, SubscribeInterface, MqttPropertiesInterface {
 
