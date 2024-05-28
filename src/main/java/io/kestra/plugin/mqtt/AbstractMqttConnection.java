@@ -1,5 +1,6 @@
 package io.kestra.plugin.mqtt;
 
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.tasks.Task;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -30,6 +31,8 @@ public abstract class AbstractMqttConnection extends Task implements MqttConnect
     private String username;
 
     private String password;
+
+    private String crt;
 
     public enum Version {
         V3,

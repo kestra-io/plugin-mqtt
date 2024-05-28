@@ -74,9 +74,6 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
     @PluginProperty(dynamic = true)
     private String topic;
 
-    @PluginProperty(dynamic = true)
-    private String crt;
-
     @Schema(
         title = "Source of message send",
         description = "Can be an internal storage uri, a map or a list.",
@@ -104,7 +101,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
     @SuppressWarnings("unchecked")
     @Override
     public Publish.Output run(RunContext runContext) throws Exception {
-        MqttInterface connection = MqttFactory.create(runContext, this, crt);
+        MqttInterface connection = MqttFactory.create(runContext, this);
 
         Integer count = 1;
 
