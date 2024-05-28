@@ -80,4 +80,10 @@ public interface MqttConnectionInterface {
     )
     @PluginProperty(dynamic = true)
     String getPassword();
+
+    @Schema(
+        title = "Server certificate file path."
+    )
+    @PluginProperty(dynamic = true)
+    String getCrt();
 }

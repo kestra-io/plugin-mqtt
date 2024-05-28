@@ -5,15 +5,24 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.AbstractMqttConnection;
 import io.kestra.plugin.mqtt.Publish;
 import io.kestra.plugin.mqtt.Subscribe;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
+import javax.net.ssl.SSLSocketFactory;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
 public class MqttV3Service implements MqttInterface {
     MqttAsyncClient client;
+
+    @Getter
+    @Setter
+    private String crt;
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception {
@@ -36,6 +45,14 @@ public class MqttV3Service implements MqttInterface {
 
             if (connection.getPassword() != null) {
                 connectOptions.setPassword(runContext.render(connection.getPassword()).toCharArray());
+            }
+
+            if (!StringUtils.isBlank(crt) && Path.of(crt).toFile().exists()) {
+                SSLSocketFactory socketFactory = CustomSSLSocketFactory.createSSLSocketFactory(crt);
+                connectOptions.setCleanSession(true);
+                connectOptions.setConnectionTimeout(60);
+                connectOptions.setKeepAliveInterval(60);
+                connectOptions.setSocketFactory(socketFactory);
             }
 
             if (connection.getHttpsHostnameVerificationEnabled() != null) {

@@ -61,6 +61,8 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
 
     private String password;
 
+    private String crt;
+
     private Object topic;
 
     @Builder.Default
@@ -89,6 +91,7 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
             .authMethod(this.authMethod)
             .username(this.username)
             .password(this.password)
+            .crt(this.crt)
             .version(this.version)
             .topic(this.topic)
             .serdeType(this.serdeType)

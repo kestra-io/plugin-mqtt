@@ -50,6 +50,19 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 "  type: \"sensors\"",
                 "  value: 1.23",
             }
+        ),
+        @Example(
+            code = {
+                "server: ssl://localhost:8883",
+                "clientId: kestraProducer",
+                "topic: kestra/sensors/cpu",
+                "crt: /home/path/to/ca.crt",
+                "serdeType: JSON",
+                "retain: true",
+                "from: ",
+                "  type: \"sensors\"",
+                "  value: 1.23",
+            }
         )
     }
 )
