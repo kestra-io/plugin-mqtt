@@ -29,20 +29,32 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Consume a message in real-time from MQTT topics and create one execution per message."
+    title = "Consume a message in real-time from MQTT topics and create one execution per message.",
+    description = "If you would like to consume multiple messages processed within a given time frame and process them in batch, you can use the [io.kestra.plugin.mqtt.Trigger](https://kestra.io/plugins/plugin-mqtt/triggers/io.kestra.plugin.mqtt.trigger) instead."
 )
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "server: tcp://localhost:1883",
-                "clientId: kestraProducer",
-                "topic: ",
-                " - kestra/sensors/cpu",
-                " - kestra/sensors/mem",
-                "serdeType: JSON",
-                "maxRecords: 10",
-            }
+            title = "Consume a message from MQTT topics in real-time.",
+            full = true,
+            code = """
+                id: mqtt
+                namespace: dev
+
+                tasks:
+                - id: log
+                  type: io.kestra.plugin.core.log.Log
+                  message: "{{ trigger.value }}"
+
+                triggers:
+                - id: realtime_trigger
+                  type: io.kestra.plugin.mqtt.RealtimeTrigger
+                  server: tcp://localhost:1883
+                  clientId: kestraProducer
+                  topic:
+                  - kestra/sensors/cpu
+                  - kestra/sensors/mem
+                  serdeType: JSON"""
         )
     }
 )
