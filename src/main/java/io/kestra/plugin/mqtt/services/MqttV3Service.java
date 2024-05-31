@@ -88,13 +88,23 @@ public class MqttV3Service implements MqttInterface {
         String[] topics = subscribe.topics(runContext);
 
         IMqttMessageListener messageListener = (topic, message) -> {
-            consumer.accept(Message.builder()
-                .topic(topic)
-                .id(message.getId())
-                .qos(message.getQos())
-                .payload(subscribe.getSerdeType().deserialize(message.getPayload()))
-                .retain(message.isRetained())
-                .build());
+            try {
+                consumer.accept(Message.builder()
+                    .topic(topic)
+                    .id(message.getId())
+                    .qos(message.getQos())
+                    .payload(subscribe.getSerdeType().deserialize(message.getPayload()))
+                    .retain(message.isRetained())
+                    .build());
+            } catch (Exception e) {
+                runContext.logger().error(
+                    "Cannot process message {id: {}} from topic '{}'. Cause: {}",
+                    message.getId(),
+                    topic,
+                    e.getMessage()
+                );
+                throw e;
+            }
         };
 
         IMqttMessageListener[] listeners = new IMqttMessageListener[topics.length];
@@ -113,6 +123,26 @@ public class MqttV3Service implements MqttInterface {
     public void unsubscribe(RunContext runContext, Subscribe subscribe) throws Exception {
         IMqttToken unsubscribe = client.unsubscribe(subscribe.topics(runContext));
         unsubscribe.waitForCompletion();
+    }
+
+    @Override
+    public void onDisconnected(final Consumer<Throwable> handler) {
+        client.setCallback(new MqttCallback() {
+            @Override
+            public void connectionLost(Throwable cause) {
+                handler.accept(cause);
+            }
+
+            @Override
+            public void messageArrived(String topic, MqttMessage message) {
+
+            }
+
+            @Override
+            public void deliveryComplete(IMqttDeliveryToken token) {
+
+            }
+        });
     }
 
     @Override

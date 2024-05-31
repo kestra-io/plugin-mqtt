@@ -2,7 +2,6 @@ package io.kestra.plugin.mqtt;
 
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.triggers.*;
@@ -22,6 +21,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @SuperBuilder
 @ToString
@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
                 tasks:
                 - id: log
                   type: io.kestra.plugin.core.log.Log
-                  message: "{{ trigger.value }}"
+                  message: "{{ trigger.payload }}"
 
                 triggers:
                 - id: realtime_trigger
@@ -122,16 +122,26 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
     }
 
     public Publisher<Message> publisher(final Subscribe task, final RunContext runContext) throws Exception {
-        MqttInterface connection = MqttFactory.create(runContext, task);
+        final MqttInterface connection = MqttFactory.create(runContext, task);
 
         return Flux.create(emitter -> {
             try {
+
+                final AtomicReference<Throwable> error = new AtomicReference<>();
+
+                // The MQTT client is automatically shutdown if an exception is thrown in the client
+                // e.g., while processing a message
+                connection.onDisconnected(throwable -> {
+                    error.set(throwable);
+                    isActive.set(false); // proactively stop consuming
+                });
+
                 emitter.onDispose(() -> {
                     try {
                         connection.unsubscribe(runContext, task);
                         connection.close();
                     } catch (Exception e) {
-                        runContext.logger().warn("Error while closing connection: " + e.getMessage());
+                        runContext.logger().debug("Error while closing connection: " + e.getMessage());
                     } finally {
                         this.waitForTermination.countDown();
                     }
@@ -140,9 +150,15 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
                 connection.subscribe(runContext, task, emitter::next);
 
                 busyWait();
-                emitter.complete();
 
+                // dispose
+                if (error.get() != null) {
+                    emitter.error(error.get());
+                } else {
+                    emitter.complete();
+                }
             } catch (Exception e) {
+                isActive.set(false);
                 emitter.error(e);
             }
         });

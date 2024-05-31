@@ -18,6 +18,8 @@ public interface MqttInterface {
 
     void close() throws Exception;
 
+    void onDisconnected(final Consumer<Throwable> handler);
+
     default MqttInterface create(AbstractMqttConnection.Version version) {
         if (version == AbstractMqttConnection.Version.V5) {
             return new MqttV5Service();

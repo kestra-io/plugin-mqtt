@@ -7,8 +7,11 @@ import io.kestra.plugin.mqtt.Subscribe;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.mqttv5.client.IMqttToken;
 import org.eclipse.paho.mqttv5.client.MqttAsyncClient;
+import org.eclipse.paho.mqttv5.client.MqttCallback;
+import org.eclipse.paho.mqttv5.client.MqttDisconnectResponse;
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence;
 import org.eclipse.paho.mqttv5.common.MqttException;
 import org.eclipse.paho.mqttv5.common.MqttMessage;
@@ -99,15 +102,25 @@ public class MqttV5Service implements MqttInterface {
         }
 
         client.subscribe(subscriptions, null, null, (topic, message) -> {
-            consumer.accept(Message.builder()
-                .topic(topic)
-                .id(message.getId())
-                .qos(message.getQos())
-                .payload(subscribe.getSerdeType().deserialize(message.getPayload()))
-                .retain(message.isRetained())
-                .properties(message.getProperties().getValidProperties())
-                .build()
-            );
+            try {
+                consumer.accept(Message.builder()
+                    .topic(topic)
+                    .id(message.getId())
+                    .qos(message.getQos())
+                    .payload(subscribe.getSerdeType().deserialize(message.getPayload()))
+                    .retain(message.isRetained())
+                    .properties(message.getProperties().getValidProperties())
+                    .build()
+                );
+            } catch (Exception e) {
+                runContext.logger().error(
+                    "Cannot process message {id: {}} from topic '{}'. Cause: {}",
+                    message.getId(),
+                    topic,
+                    e.getMessage()
+                );
+                throw e;
+            }
         }, props);
     }
 
@@ -115,6 +128,41 @@ public class MqttV5Service implements MqttInterface {
     public void unsubscribe(RunContext runContext, Subscribe subscribe) throws Exception {
         IMqttToken unsubscribe = client.unsubscribe(subscribe.topics(runContext));
         unsubscribe.waitForCompletion();
+    }
+
+    @Override
+    public void onDisconnected(final Consumer<Throwable> handler) {
+        client.setCallback(new MqttCallback() {
+            @Override
+            public void disconnected(MqttDisconnectResponse disconnectResponse) {
+                handler.accept(disconnectResponse.getException().getCause());
+            }
+
+            @Override
+            public void mqttErrorOccurred(MqttException exception) {
+
+            }
+
+            @Override
+            public void messageArrived(String topic, MqttMessage message) throws Exception {
+
+            }
+
+            @Override
+            public void deliveryComplete(IMqttToken token) {
+
+            }
+
+            @Override
+            public void connectComplete(boolean reconnect, String serverURI) {
+
+            }
+
+            @Override
+            public void authPacketArrived(int reasonCode, MqttProperties properties) {
+
+            }
+        });
     }
 
     @Override
