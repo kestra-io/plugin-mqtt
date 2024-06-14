@@ -7,15 +7,12 @@ import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
-import io.kestra.plugin.mqtt.services.Message;
 import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -92,18 +89,14 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
             AtomicInteger total = new AtomicInteger();
             ZonedDateTime started = ZonedDateTime.now();
 
-            thread = new Thread(throwRunnable(() -> {
+            thread = Thread.ofVirtual().name("mqtt-subscribe").start(throwRunnable(() -> {
                 connection.subscribe(runContext, this, throwConsumer(message -> {
                     FileSerde.write(output, message);
 
                     total.getAndIncrement();
                     count.compute(message.getTopic(), (s, integer) -> integer == null ? 1 : integer + 1);
                 }));
-
             }));
-            thread.setDaemon(true);
-            thread.setName("mqtt-subscribe");
-            thread.start();
 
             while (!this.ended(total, started)) {
                 //noinspection BusyWait
