@@ -32,8 +32,8 @@ import java.util.Optional;
                 "server: tcp://localhost:1883",
                 "clientId: kestraProducer",
                 "topic: ",
-                " - kestra/sensors/cpu",
-                " - kestra/sensors/mem",
+                "  - kestra/sensors/cpu",
+                "  - kestra/sensors/mem",
                 "serdeType: JSON",
                 "maxRecords: 10",
             }

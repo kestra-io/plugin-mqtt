@@ -39,22 +39,22 @@ import java.util.concurrent.atomic.AtomicReference;
             full = true,
             code = """
                 id: mqtt
-                namespace: dev
+                namespace: company.team
 
                 tasks:
-                - id: log
-                  type: io.kestra.plugin.core.log.Log
-                  message: "{{ trigger.payload }}"
+                  - id: log
+                    type: io.kestra.plugin.core.log.Log
+                    message: "{{ trigger.payload }}"
 
                 triggers:
-                - id: realtime_trigger
-                  type: io.kestra.plugin.mqtt.RealtimeTrigger
-                  server: tcp://localhost:1883
-                  clientId: kestraProducer
-                  topic:
-                  - kestra/sensors/cpu
-                  - kestra/sensors/mem
-                  serdeType: JSON"""
+                  - id: realtime_trigger
+                    type: io.kestra.plugin.mqtt.RealtimeTrigger
+                    server: tcp://localhost:1883
+                    clientId: kestraProducer
+                    topic:
+                    - kestra/sensors/cpu
+                    - kestra/sensors/mem
+                    serdeType: JSON"""
         )
     }
 )
