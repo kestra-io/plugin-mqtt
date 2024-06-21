@@ -81,7 +81,7 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     public Output run(RunContext runContext) throws Exception {
         MqttInterface connection = MqttFactory.create(runContext, this);
 
-        File tempFile = runContext.tempFile(".ion").toFile();
+        File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
         Thread thread = null;
 
         try (BufferedOutputStream output = new BufferedOutputStream(new FileOutputStream(tempFile))) {
