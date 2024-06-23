@@ -52,46 +52,48 @@ class TriggerTest {
         CountDownLatch queueCount = new CountDownLatch(1);
 
         // scheduler
-        Worker worker = new Worker(applicationContext, 8, null);
-        try (
-            AbstractScheduler scheduler = new JdbcScheduler(
-                this.applicationContext,
-                this.flowListenersService
-            );
-        ) {
-            // wait for execution
-            Flux<Execution> receive = TestsUtils.receive(executionQueue, execution -> {
-                queueCount.countDown();
-                assertThat(execution.getLeft().getFlowId(), is("trigger"));
-            });
+        try (Worker worker = applicationContext.createBean(Worker.class, IdUtils.create(), 8, null)) {
+            try (
+                AbstractScheduler scheduler = new JdbcScheduler(
+                    this.applicationContext,
+                    this.flowListenersService
+                );
+            ) {
+                // wait for execution
+                Flux<Execution> receive = TestsUtils.receive(executionQueue, execution -> {
+                    queueCount.countDown();
+                    assertThat(execution.getLeft().getFlowId(), is("trigger"));
+                });
 
-            Publish task = Publish.builder()
-                .id(TriggerTest.class.getSimpleName())
-                .type(Publish.class.getName())
-                .server("tcp://localhost:1883")
-                .clientId(IdUtils.create())
-                .topic("test/trigger")
-                .serdeType(SerdeType.JSON)
-                .retain(true)
-                .version(AbstractMqttConnection.Version.V5)
-                .from(Map.of(
-                    "message", "hello trigger"
-                ))
-                .build();
+                Publish task = Publish.builder()
+                    .id(TriggerTest.class.getSimpleName())
+                    .type(Publish.class.getName())
+                    .server("tcp://localhost:1883")
+                    .clientId(IdUtils.create())
+                    .topic("test/trigger")
+                    .serdeType(SerdeType.JSON)
+                    .retain(true)
+                    .version(AbstractMqttConnection.Version.V5)
+                    .from(Map.of(
+                        "message", "hello trigger"
+                    ))
+                    .build();
 
-            worker.run();
-            scheduler.run();
+                worker.run();
+                scheduler.run();
 
-            repositoryLoader.load(Objects.requireNonNull(TriggerTest.class.getClassLoader().getResource("flows/trigger.yaml")));
+                repositoryLoader.load(Objects.requireNonNull(TriggerTest.class.getClassLoader()
+                    .getResource("flows/trigger.yaml")));
 
-            task.run(TestsUtils.mockRunContext(runContextFactory, task, ImmutableMap.of()));
+                task.run(TestsUtils.mockRunContext(runContextFactory, task, ImmutableMap.of()));
 
-            boolean await = queueCount.await(1, TimeUnit.MINUTES);
-            assertThat(await, is(true));
+                boolean await = queueCount.await(1, TimeUnit.MINUTES);
+                assertThat(await, is(true));
 
-            Integer trigger = (Integer) receive.blockLast().getTrigger().getVariables().get("messagesCount");
+                Integer trigger = (Integer) Objects.requireNonNull(receive.blockLast()).getTrigger().getVariables().get("messagesCount");
 
-            assertThat(trigger, greaterThanOrEqualTo(1));
+                assertThat(trigger, greaterThanOrEqualTo(1));
+            }
         }
     }
 }
