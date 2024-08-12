@@ -18,7 +18,6 @@ import lombok.experimental.SuperBuilder;
 
 import jakarta.validation.constraints.NotNull;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -112,7 +111,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
             if (this.from instanceof String) {
                 URI from = new URI(runContext.render((String) this.from));
                 try (BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)))) {
-                    flowable = Flux.create(FileSerde.reader(inputStream), FluxSink.OverflowStrategy.BUFFER);
+                    flowable = FileSerde.readAll(inputStream);
                 }
             } else {
                 flowable = Flux.fromArray(((List<?>) this.from).stream()
