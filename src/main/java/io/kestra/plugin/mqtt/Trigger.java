@@ -28,15 +28,27 @@ import java.util.Optional;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "server: tcp://localhost:1883",
-                "clientId: kestraProducer",
-                "topic: ",
-                "  - kestra/sensors/cpu",
-                "  - kestra/sensors/mem",
-                "serdeType: JSON",
-                "maxRecords: 10",
-            }
+            full = true,
+            code = """
+                id: mqtt_trigger
+                namespace: company.team
+
+                tasks:
+                  - id: log
+                    type: io.kestra.plugin.core.log.Log
+                    message: "{{ trigger.payload }}"
+
+                triggers:
+                  - id: trigger
+                    type: io.kestra.plugin.mqtt.Trigger
+                    server: tcp://localhost:1883
+                    clientId: kestraProducer
+                    topic:
+                      - kestra/sensors/cpu
+                      - kestra/sensors/mem
+                    serdeType: JSON
+                    maxRecords: 10
+            """
         )
     }
 )

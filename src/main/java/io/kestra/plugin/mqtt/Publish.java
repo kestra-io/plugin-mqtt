@@ -39,29 +39,43 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "server: tcp://localhost:1883",
-                "clientId: kestraProducer",
-                "topic: kestra/sensors/cpu",
-                "serdeType: JSON",
-                "retain: true",
-                "from: ",
-                "  type: \"sensors\"",
-                "  value: 1.23",
-            }
+            full = true,
+            code = """
+                id: mqtt_publish
+                namespace: company.team
+                
+                tasks:
+                  - id: publish
+                    type: io.kestra.plugin.mqtt.Publish
+                    server: tcp://localhost:1883
+                    clientId: kestraProducer
+                    topic: kestra/sensors/cpu
+                    serdeType: JSON
+                    retain: true
+                    from:
+                      type: "sensors"
+                      value: 1.23
+                """
         ),
         @Example(
-            code = {
-                "server: ssl://localhost:8883",
-                "clientId: kestraProducer",
-                "topic: kestra/sensors/cpu",
-                "crt: /home/path/to/ca.crt",
-                "serdeType: JSON",
-                "retain: true",
-                "from: ",
-                "  type: \"sensors\"",
-                "  value: 1.23",
-            }
+            full = true,
+            code = """
+                id: mqtt_publish
+                namespace: company.team
+                
+                tasks:
+                  - id: publish
+                    type: io.kestra.plugin.mqtt.Publish
+                    server: ssl://localhost:8883
+                    clientId: kestraProducer
+                    topic: kestra/sensors/cpu
+                    crt: /home/path/to/ca.crt
+                    serdeType: JSON
+                    retain: true
+                    from:
+                      type: "sensors"
+                      value: 1.23
+            """
         )
     }
 )
