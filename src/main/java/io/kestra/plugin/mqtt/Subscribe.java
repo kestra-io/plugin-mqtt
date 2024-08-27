@@ -38,27 +38,41 @@ import static io.kestra.core.utils.Rethrow.*;
 @Plugin(
     examples = {
         @Example(
-            code = {
-                "server: tcp://localhost:1883",
-                "clientId: kestraProducer",
-                "topic: ",
-                " - kestra/sensors/cpu",
-                " - kestra/sensors/mem",
-                "serdeType: JSON",
-                "maxRecords: 10",
-            }
+            full = true,
+            code = """
+                id: mqtt_subscribe
+                namespace: company.team
+
+                tasks:
+                  - id: subscribe
+                    type: io.kestra.plugin.mqtt.Subscribe
+                    server: tcp://localhost:1883
+                    clientId: kestraProducer
+                    topic:
+                      - kestra/sensors/cpu
+                      - kestra/sensors/mem
+                    serdeType: JSON
+                    maxRecords: 10
+                """
         ),
         @Example(
-            code = {
-                "server: ssl://localhost:8883",
-                "clientId: kestraProducer",
-                "topic: ",
-                " - kestra/sensors/cpu",
-                " - kestra/sensors/mem",
-                "crt: /home/path/to/ca.crt",
-                "serdeType: JSON",
-                "maxRecords: 10",
-            }
+            full = true,
+            code = """
+                id: mqtt_subscribe
+                namespace: company.team
+
+                tasks:
+                  - id: subscribe
+                    type: io.kestra.plugin.mqtt.Subscribe
+                    server: ssl://localhost:8883
+                    clientId: kestraProducer
+                    topic:
+                      - kestra/sensors/cpu
+                      - kestra/sensors/mem
+                    crt: /home/path/to/ca.crt
+                    serdeType: JSON
+                    maxRecords: 10
+                """
         )
     }
 )

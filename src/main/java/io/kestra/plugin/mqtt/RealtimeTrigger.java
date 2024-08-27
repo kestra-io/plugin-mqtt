@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
             title = "Consume a message from MQTT topics in real-time.",
             full = true,
             code = """
-                id: mqtt
+                id: mqtt_realtime_trigger
                 namespace: company.team
 
                 tasks:
@@ -52,8 +52,8 @@ import java.util.concurrent.atomic.AtomicReference;
                     server: tcp://localhost:1883
                     clientId: kestraProducer
                     topic:
-                    - kestra/sensors/cpu
-                    - kestra/sensors/mem
+                      - kestra/sensors/cpu
+                      - kestra/sensors/mem
                     serdeType: JSON"""
         )
     }
