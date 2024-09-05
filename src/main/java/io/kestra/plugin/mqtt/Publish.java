@@ -145,9 +145,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
                 return 1;
             }));
 
-            count = resultFlowable
-                .reduce(Integer::sum)
-                .block();
+            count = resultFlowable.reduce(Integer::sum).blockOptional().orElse(0);
         } else {
             connection.publish(runContext, this, this.serialize(runContext.render((Map<String, Object>) this.from)));
         }
