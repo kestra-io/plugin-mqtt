@@ -1,9 +1,8 @@
 package io.kestra.plugin.mqtt;
 
-import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import jakarta.validation.constraints.NotNull;
 
 public interface MqttPropertiesInterface {
@@ -11,8 +10,7 @@ public interface MqttPropertiesInterface {
         title = "Serializer / Deserializer used for the payload"
     )
     @NotNull
-    @PluginProperty(dynamic = false)
-    SerdeType getSerdeType();
+    Property<SerdeType> getSerdeType();
 
     @Schema(
         title = "Sets the quality of service for this message.",
@@ -36,6 +34,5 @@ public interface MqttPropertiesInterface {
             "client-side state will be lost."
     )
     @NotNull
-    @PluginProperty(dynamic = false)
-    Integer getQos();
+    Property<Integer> getQos();
 }

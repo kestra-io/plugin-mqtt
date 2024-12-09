@@ -1,10 +1,10 @@
 package io.kestra.plugin.mqtt;
 
-import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
-import jakarta.validation.constraints.NotNull;
 
 public interface MqttConnectionInterface {
     @Schema(
@@ -18,16 +18,14 @@ public interface MqttConnectionInterface {
             "* `ssl://localhost:8883`\n" +
             "If the port is not specified, it will default to 1883 for `tcp://`\" URIs, and 8883 for `ssl://` URIs."
     )
-    @PluginProperty(dynamic = true)
     @NotNull
-    String getServer();
+    Property<String> getServer();
 
     @Schema(
         title = "The MQTT version to use."
     )
-    @PluginProperty(dynamic = false)
     @NotNull
-    AbstractMqttConnection.Version getVersion();
+    Property<AbstractMqttConnection.Version> getVersion();
 
     @Schema(
         title = "A client identifier that is unique on the server being connected to",
@@ -39,9 +37,8 @@ public interface MqttConnectionInterface {
             "must use the same identifier between connections if durable subscriptions or reliable delivery " +
             "of messages is required."
     )
-    @PluginProperty(dynamic = true)
     @NotNull
-    String getClientId();
+    Property<String> getClientId();
 
     @Schema(
         title = "The connection timeout.",
@@ -49,15 +46,13 @@ public interface MqttConnectionInterface {
             "the MQTT server to be established. The default timeout is 30 seconds. A value of 0 disables timeout " +
             "processing meaning the client will wait until the network connection is made successfully or fails."
     )
-    @PluginProperty(dynamic = false)
-    Duration getConnectionTimeout();
+    Property<Duration> getConnectionTimeout();
 
     @Schema(
         title = "Disable ssl verification.",
         description = "This value will allow all ca certificate."
     )
-    @PluginProperty(dynamic = false)
-    Boolean getHttpsHostnameVerificationEnabled();
+    Property<Boolean> getHttpsHostnameVerificationEnabled();
 
     @Schema(
         title = "The Authentication Method.",
@@ -65,25 +60,21 @@ public interface MqttConnectionInterface {
             "If set, this value contains the name of the authentication method to be used for extended " +
             "authentication. If null, extended authentication is not performed."
     )
-    @PluginProperty(dynamic = true)
-    String getAuthMethod();
+    Property<String> getAuthMethod();
 
     @Schema(
         title = "The user name to use for the connection."
     )
-    @PluginProperty(dynamic = true)
-    String getUsername();
+    Property<String> getUsername();
 
 
     @Schema(
         title = "The password to use for the connection."
     )
-    @PluginProperty(dynamic = true)
-    String getPassword();
+    Property<String> getPassword();
 
     @Schema(
         title = "Server certificate file path."
     )
-    @PluginProperty(dynamic = true)
-    String getCrt();
+    Property<String> getCrt();
 }

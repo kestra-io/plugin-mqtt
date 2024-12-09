@@ -13,6 +13,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 import javax.net.ssl.SSLSocketFactory;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -28,23 +29,23 @@ public class MqttV3Service implements MqttInterface {
     public void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception {
         try {
             client = new MqttAsyncClient(
-                runContext.render(connection.getServer()),
-                runContext.render(connection.getClientId()),
+                runContext.render(connection.getServer()).as(String.class).orElseThrow(),
+                runContext.render(connection.getClientId()).as(String.class).orElseThrow(),
                 new MemoryPersistence()
             );
 
             org.eclipse.paho.client.mqttv3.MqttConnectOptions connectOptions = new org.eclipse.paho.client.mqttv3.MqttConnectOptions();
 
             if (connection.getConnectionTimeout() != null) {
-                connectOptions.setConnectionTimeout((int) connection.getConnectionTimeout().toSeconds());
+                connectOptions.setConnectionTimeout((int) runContext.render(connection.getConnectionTimeout()).as(Duration.class).orElseThrow().toSeconds());
             }
 
             if (connection.getUsername() != null) {
-                connectOptions.setUserName(runContext.render(connection.getUsername()));
+                connectOptions.setUserName(runContext.render(connection.getUsername()).as(String.class).orElseThrow());
             }
 
             if (connection.getPassword() != null) {
-                connectOptions.setPassword(runContext.render(connection.getPassword()).toCharArray());
+                connectOptions.setPassword(runContext.render(connection.getPassword()).as(String.class).orElseThrow().toCharArray());
             }
 
             if (!StringUtils.isBlank(crt) && Path.of(crt).toFile().exists()) {
@@ -56,7 +57,7 @@ public class MqttV3Service implements MqttInterface {
             }
 
             if (connection.getHttpsHostnameVerificationEnabled() != null) {
-                connectOptions.setHttpsHostnameVerificationEnabled(connection.getHttpsHostnameVerificationEnabled());
+                connectOptions.setHttpsHostnameVerificationEnabled(runContext.render(connection.getHttpsHostnameVerificationEnabled()).as(Boolean.class).orElseThrow());
             }
 
             IMqttToken connect = client.connect(connectOptions);
@@ -72,11 +73,11 @@ public class MqttV3Service implements MqttInterface {
         MqttMessage mqttMessage = new MqttMessage();
 
         mqttMessage.setPayload(message);
-        mqttMessage.setRetained(publish.getRetain());
-        mqttMessage.setQos(publish.getQos());
+        mqttMessage.setRetained(runContext.render(publish.getRetain()).as(Boolean.class).orElseThrow());
+        mqttMessage.setQos(runContext.render(publish.getQos()).as(Integer.class).orElseThrow());
 
         try {
-            IMqttToken token = client.publish(runContext.render(publish.getTopic()), mqttMessage);
+            IMqttToken token = client.publish(runContext.render(publish.getTopic()).as(String.class).orElseThrow(), mqttMessage);
             token.waitForCompletion();
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);
@@ -93,7 +94,7 @@ public class MqttV3Service implements MqttInterface {
                     .topic(topic)
                     .id(message.getId())
                     .qos(message.getQos())
-                    .payload(subscribe.getSerdeType().deserialize(message.getPayload()))
+                    .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
                     .retain(message.isRetained())
                     .build());
             } catch (Exception e) {
@@ -113,7 +114,7 @@ public class MqttV3Service implements MqttInterface {
 
         ArrayList<Integer> qos = new ArrayList<>();
         for (int i = 0; i < topics.length; i++) {
-            qos.add(subscribe.getQos());
+            qos.add(runContext.render(subscribe.getQos()).as(Integer.class).orElseThrow());
         }
 
         client.subscribe(topics, Ints.toArray(qos), listeners);

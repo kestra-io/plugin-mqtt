@@ -1,12 +1,12 @@
 package io.kestra.plugin.mqtt;
 
-import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.Task;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.Duration;
-import jakarta.validation.constraints.NotNull;
 
 @SuperBuilder
 @ToString
@@ -16,23 +16,23 @@ import jakarta.validation.constraints.NotNull;
 public abstract class AbstractMqttConnection extends Task implements MqttConnectionInterface {
     @Builder.Default
     @NotNull
-    private Version version = Version.V5;
+    private Property<Version> version = Property.of(Version.V5);
 
-    private String server;
+    private Property<String> server;
 
-    private String clientId;
+    private Property<String> clientId;
 
-    private Duration connectionTimeout;
+    private Property<Duration> connectionTimeout;
 
-    private Boolean httpsHostnameVerificationEnabled;
+    private Property<Boolean> httpsHostnameVerificationEnabled;
 
-    private String authMethod;
+    private Property<String> authMethod;
 
-    private String username;
+    private Property<String> username;
 
-    private String password;
+    private Property<String> password;
 
-    private String crt;
+    private Property<String> crt;
 
     public enum Version {
         V3,

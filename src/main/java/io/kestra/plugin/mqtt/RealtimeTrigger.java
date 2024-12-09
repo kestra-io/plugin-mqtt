@@ -4,6 +4,7 @@ import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
 import io.kestra.core.models.executions.Execution;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.triggers.*;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.services.Message;
@@ -62,31 +63,31 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
 
     @Builder.Default
     @NotNull
-    private AbstractMqttConnection.Version version = AbstractMqttConnection.Version.V5;
+    private Property<AbstractMqttConnection.Version> version = Property.of(AbstractMqttConnection.Version.V5);
 
-    private String server;
+    private Property<String> server;
 
-    private String clientId;
+    private Property<String> clientId;
 
-    private Duration connectionTimeout;
+    private Property<Duration> connectionTimeout;
 
-    private Boolean httpsHostnameVerificationEnabled;
+    private Property<Boolean> httpsHostnameVerificationEnabled;
 
-    private String authMethod;
+    private Property<String> authMethod;
 
-    private String username;
+    private Property<String> username;
 
-    private String password;
+    private Property<String> password;
 
     private Object topic;
 
-    private String crt;
+    private Property<String> crt;
 
     @Builder.Default
-    private SerdeType serdeType = SerdeType.JSON;
+    private Property<SerdeType> serdeType = Property.of(SerdeType.JSON);
 
     @Builder.Default
-    private Integer qos = 1;
+    private Property<Integer> qos = Property.of(1);
 
     @Builder.Default
     @Getter(AccessLevel.NONE)

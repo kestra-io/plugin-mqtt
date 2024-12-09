@@ -1,10 +1,12 @@
 package io.kestra.plugin.mqtt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
@@ -13,10 +15,9 @@ import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import jakarta.validation.constraints.NotNull;
 import reactor.core.publisher.Flux;
 
 import java.io.BufferedReader;
@@ -43,7 +44,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
             code = """
                 id: mqtt_publish
                 namespace: company.team
-                
+
                 tasks:
                   - id: publish
                     type: io.kestra.plugin.mqtt.Publish
@@ -62,7 +63,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
             code = """
                 id: mqtt_publish
                 namespace: company.team
-                
+
                 tasks:
                   - id: publish
                     type: io.kestra.plugin.mqtt.Publish
@@ -84,8 +85,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
         title = "Topic where to send message"
     )
     @NotNull
-    @PluginProperty(dynamic = true)
-    private String topic;
+    private Property<String> topic;
 
     @Schema(
         title = "Source of message send",
@@ -102,14 +102,13 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
             "payload e.g. `null` will clear the retained message from the server."
     )
     @NotNull
-    @PluginProperty
     @Builder.Default
-    private Boolean retain = false;
+    private Property<Boolean> retain = Property.of(false);
 
-    private SerdeType serdeType;
+    private Property<SerdeType> serdeType;
 
     @Builder.Default
-    private Integer qos = 1;
+    private Property<Integer> qos = Property.of(1);
 
     @SuppressWarnings("unchecked")
     @Override
@@ -118,7 +117,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
 
         Integer count = 1;
 
-        String topic = runContext.render(this.topic);
+        String topic = runContext.render(this.topic).as(String.class).orElseThrow();
 
         if (this.from instanceof String || this.from instanceof List) {
             Flux<Object> flowable;
@@ -141,13 +140,13 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
             }
 
             Flux<Integer> resultFlowable = flowable.map(throwFunction(row -> {
-                connection.publish(runContext, this, this.serialize(row));
+                connection.publish(runContext, this, this.serialize(row, runContext));
                 return 1;
             }));
 
             count = resultFlowable.reduce(Integer::sum).blockOptional().orElse(0);
         } else {
-            connection.publish(runContext, this, this.serialize(runContext.render((Map<String, Object>) this.from)));
+            connection.publish(runContext, this, this.serialize(runContext.render((Map<String, Object>) this.from), runContext));
         }
 
         runContext.metric(Counter.of("records", count, "topic", topic));
@@ -159,10 +158,10 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
             .build();
     }
 
-    private byte[] serialize(Object row) throws JsonProcessingException {
-        if (this.serdeType == SerdeType.JSON) {
+    private byte[] serialize(Object row, RunContext runContext) throws JsonProcessingException, IllegalVariableEvaluationException {
+        if (runContext.render(this.serdeType).as(SerdeType.class).orElseThrow() == SerdeType.JSON) {
             return JacksonMapper.ofJson().writeValueAsBytes(row);
-        } else if (this.serdeType == SerdeType.STRING) {
+        } else if (runContext.render(this.serdeType).as(SerdeType.class).orElseThrow() == SerdeType.STRING) {
             return ((String) row).getBytes(StandardCharsets.UTF_8);
         } else {
             throw new IllegalArgumentException("Unexpetected serdeType '" + this.serdeType + "'");

@@ -1,13 +1,14 @@
 package io.kestra.plugin.mqtt;
 
 import com.google.common.collect.ImmutableMap;
+import io.kestra.core.junit.annotations.KestraTest;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.mqtt.services.SerdeType;
-import io.kestra.core.junit.annotations.KestraTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -42,13 +43,13 @@ class SuiteTest {
         }
 
         Publish publish = Publish.builder()
-            .server(server)
-            .clientId(IdUtils.create())
-            .topic("test/" + topic)
-            .serdeType(SerdeType.JSON)
-            .retain(true)
-            .version(version)
-            .crt(caUri)
+            .server(Property.of(server))
+            .clientId(Property.of(IdUtils.create()))
+            .topic(Property.of("test/" + topic))
+            .serdeType(Property.of(SerdeType.JSON))
+            .retain(Property.of(true))
+            .version(Property.of(version))
+            .crt(Property.of(caUri))
             .from(List.of(Map.of(
                 "message", "{{ \"apple\" ~ \"pear\" ~ \"banana\" }}"
             )))
@@ -59,13 +60,13 @@ class SuiteTest {
         assertThat(publishOutput.getMessagesCount(), is(1));
 
         Subscribe subscribe = Subscribe.builder()
-            .server(server)
-            .clientId(IdUtils.create())
+            .server(Property.of(server))
+            .clientId(Property.of(IdUtils.create()))
             .topic("test/" + topic)
-            .serdeType(SerdeType.JSON)
-            .maxRecords(1)
-            .version(version)
-            .crt(caUri)
+            .serdeType(Property.of(SerdeType.JSON))
+            .maxRecords(Property.of(1))
+            .version(Property.of(version))
+            .crt(Property.of(caUri))
             .build();
         Subscribe.Output subscribeOutput = subscribe.run(runContext);
 

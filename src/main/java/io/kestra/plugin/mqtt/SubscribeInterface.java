@@ -2,8 +2,6 @@ package io.kestra.plugin.mqtt;
 
 import io.kestra.core.models.annotations.PluginProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
-
-import java.time.Duration;
 import jakarta.validation.constraints.NotNull;
 
 public interface SubscribeInterface {
