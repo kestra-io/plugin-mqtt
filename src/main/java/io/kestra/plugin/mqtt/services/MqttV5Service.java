@@ -7,7 +7,6 @@ import io.kestra.plugin.mqtt.Subscribe;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.mqttv5.client.IMqttToken;
 import org.eclipse.paho.mqttv5.client.MqttAsyncClient;
 import org.eclipse.paho.mqttv5.client.MqttCallback;
@@ -20,6 +19,7 @@ import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -34,27 +34,27 @@ public class MqttV5Service implements MqttInterface {
     public void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception {
         try {
             client = new MqttAsyncClient(
-                runContext.render(connection.getServer()),
-                runContext.render(connection.getClientId()),
+                runContext.render(connection.getServer()).as(String.class).orElse(null),
+                runContext.render(connection.getClientId()).as(String.class).orElse(null),
                 new MemoryPersistence()
             );
 
             org.eclipse.paho.mqttv5.client.MqttConnectionOptions connectOptions = new org.eclipse.paho.mqttv5.client.MqttConnectionOptions();
 
             if (connection.getConnectionTimeout() != null) {
-                connectOptions.setConnectionTimeout((int) connection.getConnectionTimeout().toSeconds());
+                connectOptions.setConnectionTimeout((int) runContext.render(connection.getConnectionTimeout()).as(Duration.class).orElseThrow().toSeconds());
             }
 
             if (connection.getAuthMethod() != null) {
-                connectOptions.setAuthMethod(runContext.render(connection.getAuthMethod()));
+                connectOptions.setAuthMethod(runContext.render(connection.getAuthMethod()).as(String.class).orElseThrow());
             }
 
             if (connection.getUsername() != null) {
-                connectOptions.setUserName(runContext.render(connection.getUsername()));
+                connectOptions.setUserName(runContext.render(connection.getUsername()).as(String.class).orElseThrow());
             }
 
             if (connection.getPassword() != null) {
-                connectOptions.setPassword(runContext.render(connection.getPassword()).getBytes(StandardCharsets.UTF_8));
+                connectOptions.setPassword(runContext.render(connection.getPassword()).as(String.class).orElseThrow().getBytes(StandardCharsets.UTF_8));
             }
 
             if (!StringUtils.isBlank(crt) && Path.of(crt).toFile().exists()) {
@@ -62,7 +62,7 @@ public class MqttV5Service implements MqttInterface {
             }
 
             if (connection.getHttpsHostnameVerificationEnabled() != null) {
-                connectOptions.setHttpsHostnameVerificationEnabled(connection.getHttpsHostnameVerificationEnabled());
+                connectOptions.setHttpsHostnameVerificationEnabled(runContext.render(connection.getHttpsHostnameVerificationEnabled()).as(Boolean.class).orElseThrow());
             }
 
             IMqttToken connect = client.connect(connectOptions);
@@ -77,11 +77,11 @@ public class MqttV5Service implements MqttInterface {
         MqttMessage mqttMessage = new MqttMessage();
 
         mqttMessage.setPayload(message);
-        mqttMessage.setRetained(publish.getRetain());
-        mqttMessage.setQos(publish.getQos());
+        mqttMessage.setRetained(runContext.render(publish.getRetain()).as(Boolean.class).orElseThrow());
+        mqttMessage.setQos(runContext.render(publish.getQos()).as(Integer.class).orElseThrow());
 
         try {
-            IMqttToken token = client.publish(runContext.render(publish.getTopic()), mqttMessage);
+            IMqttToken token = client.publish(runContext.render(publish.getTopic()).as(String.class).orElseThrow(), mqttMessage);
             token.waitForCompletion();
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);
@@ -98,7 +98,7 @@ public class MqttV5Service implements MqttInterface {
         props.setSubscriptionIdentifiers(List.of(0));
 
         for (int i = 0; i < topics.length; i++) {
-            subscriptions[i] = new MqttSubscription(topics[i], subscribe.getQos());
+            subscriptions[i] = new MqttSubscription(topics[i], runContext.render(subscribe.getQos()).as(Integer.class).orElseThrow());
         }
 
         client.subscribe(subscriptions, null, null, (topic, message) -> {
@@ -107,7 +107,7 @@ public class MqttV5Service implements MqttInterface {
                     .topic(topic)
                     .id(message.getId())
                     .qos(message.getQos())
-                    .payload(subscribe.getSerdeType().deserialize(message.getPayload()))
+                    .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
                     .retain(message.isRetained())
                     .properties(message.getProperties().getValidProperties())
                     .build()

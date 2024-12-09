@@ -1,7 +1,9 @@
 package io.kestra.plugin.mqtt;
 
 import com.google.common.collect.ImmutableMap;
+import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.executions.Execution;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.queues.QueueFactoryInterface;
 import io.kestra.core.queues.QueueInterface;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
@@ -9,12 +11,11 @@ import io.kestra.core.runners.FlowListeners;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.runners.Worker;
 import io.kestra.core.schedulers.AbstractScheduler;
-import io.kestra.jdbc.runner.JdbcScheduler;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
+import io.kestra.jdbc.runner.JdbcScheduler;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import io.micronaut.context.ApplicationContext;
-import io.kestra.core.junit.annotations.KestraTest;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.junit.jupiter.api.Test;
@@ -68,12 +69,12 @@ class TriggerTest {
                 Publish task = Publish.builder()
                     .id(TriggerTest.class.getSimpleName())
                     .type(Publish.class.getName())
-                    .server("tcp://localhost:1883")
-                    .clientId(IdUtils.create())
-                    .topic("test/trigger")
-                    .serdeType(SerdeType.JSON)
-                    .retain(true)
-                    .version(AbstractMqttConnection.Version.V5)
+                    .server(Property.of("tcp://localhost:1883"))
+                    .clientId(Property.of(IdUtils.create()))
+                    .topic(Property.of("test/trigger"))
+                    .serdeType(Property.of(SerdeType.JSON))
+                    .retain(Property.of(true))
+                    .version(Property.of(AbstractMqttConnection.Version.V5))
                     .from(Map.of(
                         "message", "hello trigger"
                     ))

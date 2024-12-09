@@ -4,6 +4,7 @@ import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.executions.metrics.Counter;
+import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.FileSerde;
@@ -25,7 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.kestra.core.utils.Rethrow.*;
+import static io.kestra.core.utils.Rethrow.throwConsumer;
+import static io.kestra.core.utils.Rethrow.throwRunnable;
 
 @SuperBuilder
 @ToString
@@ -80,16 +82,16 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     private Object topic;
 
     @Builder.Default
-    private SerdeType serdeType = SerdeType.JSON;
+    private Property<SerdeType> serdeType = Property.of(SerdeType.JSON);
 
     @Builder.Default
-    private Integer qos = 1;
+    private Property<Integer> qos = Property.of(1);
 
-    private String crt;
+    private Property<String> crt;
 
-    private Integer maxRecords;
+    private Property<Integer> maxRecords;
 
-    private Duration maxDuration;
+    private Property<Duration> maxDuration;
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -112,7 +114,7 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
                 }));
             }));
 
-            while (!this.ended(total, started)) {
+            while (!this.ended(total, started, runContext)) {
                 //noinspection BusyWait
                 Thread.sleep(100);
             }
@@ -148,12 +150,14 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     }
 
     @SuppressWarnings("RedundantIfStatement")
-    private boolean ended(AtomicInteger count, ZonedDateTime start) {
-        if (this.maxRecords != null && count.get() >= this.maxRecords) {
+    private boolean ended(AtomicInteger count, ZonedDateTime start, RunContext runContext) throws IllegalVariableEvaluationException {
+        var renderedMaxRecords = runContext.render(this.maxRecords).as(Integer.class);
+        if (renderedMaxRecords.isPresent() && count.get() >= renderedMaxRecords.get()) {
             return true;
         }
 
-        if (this.maxDuration != null && ZonedDateTime.now().toEpochSecond() > start.plus(this.maxDuration).toEpochSecond()) {
+        var renderedDuration = runContext.render(this.maxDuration).as(Duration.class);
+        if (renderedDuration.isPresent() && ZonedDateTime.now().toEpochSecond() > start.plus(renderedDuration.get()).toEpochSecond()) {
             return true;
         }
 
