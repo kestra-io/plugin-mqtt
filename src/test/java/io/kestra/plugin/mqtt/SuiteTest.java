@@ -48,7 +48,7 @@ class SuiteTest {
             .topic(Property.of("test/" + topic))
             .serdeType(Property.of(SerdeType.JSON))
             .retain(Property.of(true))
-            .version(Property.of(version))
+            .mqttVersion(Property.of(version))
             .crt(Property.of(caUri))
             .from(List.of(Map.of(
                 "message", "{{ \"apple\" ~ \"pear\" ~ \"banana\" }}"
@@ -65,7 +65,7 @@ class SuiteTest {
             .topic("test/" + topic)
             .serdeType(Property.of(SerdeType.JSON))
             .maxRecords(Property.of(1))
-            .version(Property.of(version))
+            .mqttVersion(Property.of(version))
             .crt(Property.of(caUri))
             .build();
         Subscribe.Output subscribeOutput = subscribe.run(runContext);

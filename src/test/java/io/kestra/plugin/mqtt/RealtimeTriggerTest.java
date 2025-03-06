@@ -77,7 +77,7 @@ class RealtimeTriggerTest {
                     .topic(Property.of("test/realtime/trigger"))
                     .serdeType(Property.of(SerdeType.JSON))
                     .retain(Property.of(true))
-                    .version(Property.of(AbstractMqttConnection.Version.V5))
+                    .mqttVersion(Property.of(AbstractMqttConnection.Version.V5))
                     .from(Map.of(
                         "message", messageText,
                         "notification", triggerText

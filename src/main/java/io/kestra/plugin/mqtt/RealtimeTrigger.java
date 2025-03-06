@@ -63,7 +63,7 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
 
     @Builder.Default
     @NotNull
-    private Property<AbstractMqttConnection.Version> version = Property.of(AbstractMqttConnection.Version.V5);
+    private Property<AbstractMqttConnection.Version> mqttVersion = Property.of(AbstractMqttConnection.Version.V5);
 
     private Property<String> server;
 
@@ -102,7 +102,7 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
         Subscribe task = Subscribe.builder()
             .id(this.id)
             .type(Subscribe.class.getName())
-            .version(this.version)
+            .mqttVersion(this.mqttVersion)
             .server(this.server)
             .clientId(this.clientId)
             .connectionTimeout(this.connectionTimeout)
@@ -110,7 +110,7 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
             .authMethod(this.authMethod)
             .username(this.username)
             .password(this.password)
-            .version(this.version)
+            .mqttVersion(this.mqttVersion)
             .topic(this.topic)
             .serdeType(this.serdeType)
             .qos(this.qos)

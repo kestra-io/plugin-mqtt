@@ -16,7 +16,7 @@ import java.time.Duration;
 public abstract class AbstractMqttConnection extends Task implements MqttConnectionInterface {
     @Builder.Default
     @NotNull
-    private Property<Version> version = Property.of(Version.V5);
+    private Property<Version> mqttVersion = Property.of(Version.V5);
 
     private Property<String> server;
 

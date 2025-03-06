@@ -7,7 +7,7 @@ triggers:
     topic: test/realtime/trigger
     server: tcp://localhost:1883
     serdeType: JSON
-    version: V5
+    mqttVersion: V5
 
 tasks:
   - id: end

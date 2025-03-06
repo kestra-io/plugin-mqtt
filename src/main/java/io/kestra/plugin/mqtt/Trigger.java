@@ -59,7 +59,7 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
 
     @Builder.Default
     @NotNull
-    private Property<AbstractMqttConnection.Version> version = Property.of(AbstractMqttConnection.Version.V5);
+    private Property<AbstractMqttConnection.Version> mqttVersion = Property.of(AbstractMqttConnection.Version.V5);
 
     private Property<String> server;
 
@@ -97,7 +97,7 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
         Subscribe task = Subscribe.builder()
             .id(this.id)
             .type(Subscribe.class.getName())
-            .version(this.version)
+            .mqttVersion(this.mqttVersion)
             .server(this.server)
             .clientId(this.clientId)
             .connectionTimeout(this.connectionTimeout)
@@ -106,7 +106,7 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
             .username(this.username)
             .password(this.password)
             .crt(this.crt)
-            .version(this.version)
+            .mqttVersion(this.mqttVersion)
             .topic(this.topic)
             .serdeType(this.serdeType)
             .qos(this.qos)

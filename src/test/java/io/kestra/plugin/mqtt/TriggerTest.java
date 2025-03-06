@@ -74,7 +74,7 @@ class TriggerTest {
                     .topic(Property.of("test/trigger"))
                     .serdeType(Property.of(SerdeType.JSON))
                     .retain(Property.of(true))
-                    .version(Property.of(AbstractMqttConnection.Version.V5))
+                    .mqttVersion(Property.of(AbstractMqttConnection.Version.V5))
                     .from(Map.of(
                         "message", "hello trigger"
                     ))
