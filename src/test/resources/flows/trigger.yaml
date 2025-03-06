@@ -7,7 +7,7 @@ triggers:
     topic: test/trigger
     server: tcp://localhost:1883
     serdeType: JSON
-    version: V5
+    mqttVersion: V5
     maxRecords: 1
     interval: PT1S
 

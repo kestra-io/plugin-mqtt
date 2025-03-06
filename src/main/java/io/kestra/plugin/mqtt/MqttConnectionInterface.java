@@ -25,7 +25,7 @@ public interface MqttConnectionInterface {
         title = "The MQTT version to use."
     )
     @NotNull
-    Property<AbstractMqttConnection.Version> getVersion();
+    Property<AbstractMqttConnection.Version> getMqttVersion();
 
     @Schema(
         title = "A client identifier that is unique on the server being connected to",
