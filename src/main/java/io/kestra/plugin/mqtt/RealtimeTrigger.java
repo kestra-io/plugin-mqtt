@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Consume a message in real-time from MQTT topics and create one execution per message.",
+    title = "Trigger a flow on message consumption in real-time from MQTT topics.",
     description = "If you would like to consume multiple messages processed within a given time frame and process them in batch, you can use the [io.kestra.plugin.mqtt.Trigger](https://kestra.io/plugins/plugin-mqtt/triggers/io.kestra.plugin.mqtt.trigger) instead."
 )
 @Plugin(

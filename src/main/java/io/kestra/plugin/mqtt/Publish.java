@@ -35,7 +35,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Produce message in a MQTT topic"
+    title = "Publish a message to an MQTT topic."
 )
 @Plugin(
     examples = {
