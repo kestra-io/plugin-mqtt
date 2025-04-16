@@ -35,7 +35,7 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Subscribe message in a MQTT topic"
+    title = "Subscribe to messages in an MQTT topic."
 )
 @Plugin(
     examples = {
