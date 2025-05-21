@@ -76,7 +76,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     from:
                       type: "sensors"
                       value: 1.23
-            """
+                """
         )
     }
 )

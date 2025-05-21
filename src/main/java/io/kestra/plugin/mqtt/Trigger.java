@@ -49,7 +49,7 @@ import java.util.Optional;
                       - kestra/sensors/mem
                     serdeType: JSON
                     maxRecords: 10
-            """
+                """
         )
     }
 )
