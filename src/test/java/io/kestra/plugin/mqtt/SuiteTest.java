@@ -7,6 +7,7 @@ import io.kestra.core.runners.RunContext;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.storages.StorageInterface;
+import io.kestra.core.tenant.TenantService;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.mqtt.services.SerdeType;
 import jakarta.inject.Inject;
@@ -70,7 +71,7 @@ class SuiteTest {
             .build();
         Subscribe.Output subscribeOutput = subscribe.run(runContext);
 
-        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(null, null, subscribeOutput.getUri())));
+        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(TenantService.MAIN_TENANT, null, subscribeOutput.getUri())));
         List<Map<String, Object>> result = new ArrayList<>();
         FileSerde.reader(inputStream, r -> result.add((Map<String, Object>) r));
 
