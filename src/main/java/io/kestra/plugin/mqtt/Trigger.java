@@ -59,7 +59,7 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
 
     @Builder.Default
     @NotNull
-    private Property<AbstractMqttConnection.Version> mqttVersion = Property.of(AbstractMqttConnection.Version.V5);
+    private Property<AbstractMqttConnection.Version> mqttVersion = Property.ofValue(AbstractMqttConnection.Version.V5);
 
     private Property<String> server;
 
@@ -80,10 +80,10 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
     private Object topic;
 
     @Builder.Default
-    private Property<SerdeType> serdeType = Property.of(SerdeType.JSON);
+    private Property<SerdeType> serdeType = Property.ofValue(SerdeType.JSON);
 
     @Builder.Default
-    private Property<Integer> qos = Property.of(1);
+    private Property<Integer> qos = Property.ofValue(1);
 
     private Property<Integer> maxRecords;
 

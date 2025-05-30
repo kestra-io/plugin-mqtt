@@ -103,12 +103,12 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
     )
     @NotNull
     @Builder.Default
-    private Property<Boolean> retain = Property.of(false);
+    private Property<Boolean> retain = Property.ofValue(false);
 
     private Property<SerdeType> serdeType;
 
     @Builder.Default
-    private Property<Integer> qos = Property.of(1);
+    private Property<Integer> qos = Property.ofValue(1);
 
     @SuppressWarnings("unchecked")
     @Override
