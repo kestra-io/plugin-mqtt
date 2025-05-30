@@ -72,12 +72,12 @@ class RealtimeTriggerTest {
                 Publish task = Publish.builder()
                     .id(RealtimeTriggerTest.class.getSimpleName())
                     .type(Publish.class.getName())
-                    .server(Property.of("tcp://localhost:1883"))
-                    .clientId(Property.of(IdUtils.create()))
-                    .topic(Property.of("test/realtime/trigger"))
-                    .serdeType(Property.of(SerdeType.JSON))
-                    .retain(Property.of(true))
-                    .mqttVersion(Property.of(AbstractMqttConnection.Version.V5))
+                    .server(Property.ofValue("tcp://localhost:1883"))
+                    .clientId(Property.ofValue(IdUtils.create()))
+                    .topic(Property.ofValue("test/realtime/trigger"))
+                    .serdeType(Property.ofValue(SerdeType.JSON))
+                    .retain(Property.ofValue(true))
+                    .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V5))
                     .from(Map.of(
                         "message", messageText,
                         "notification", triggerText
