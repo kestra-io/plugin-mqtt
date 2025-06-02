@@ -44,13 +44,13 @@ class SuiteTest {
         }
 
         Publish publish = Publish.builder()
-            .server(Property.of(server))
-            .clientId(Property.of(IdUtils.create()))
-            .topic(Property.of("test/" + topic))
-            .serdeType(Property.of(SerdeType.JSON))
-            .retain(Property.of(true))
-            .mqttVersion(Property.of(version))
-            .crt(Property.of(caUri))
+            .server(Property.ofValue(server))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(Property.ofValue("test/" + topic))
+            .serdeType(Property.ofValue(SerdeType.JSON))
+            .retain(Property.ofValue(true))
+            .mqttVersion(Property.ofValue(version))
+            .crt(Property.ofValue(caUri))
             .from(List.of(Map.of(
                 "message", "{{ \"apple\" ~ \"pear\" ~ \"banana\" }}"
             )))
@@ -61,13 +61,13 @@ class SuiteTest {
         assertThat(publishOutput.getMessagesCount(), is(1));
 
         Subscribe subscribe = Subscribe.builder()
-            .server(Property.of(server))
-            .clientId(Property.of(IdUtils.create()))
+            .server(Property.ofValue(server))
+            .clientId(Property.ofValue(IdUtils.create()))
             .topic("test/" + topic)
-            .serdeType(Property.of(SerdeType.JSON))
-            .maxRecords(Property.of(1))
-            .mqttVersion(Property.of(version))
-            .crt(Property.of(caUri))
+            .serdeType(Property.ofValue(SerdeType.JSON))
+            .maxRecords(Property.ofValue(1))
+            .mqttVersion(Property.ofValue(version))
+            .crt(Property.ofValue(caUri))
             .build();
         Subscribe.Output subscribeOutput = subscribe.run(runContext);
 

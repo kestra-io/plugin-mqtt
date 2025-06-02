@@ -82,10 +82,10 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     private Object topic;
 
     @Builder.Default
-    private Property<SerdeType> serdeType = Property.of(SerdeType.JSON);
+    private Property<SerdeType> serdeType = Property.ofValue(SerdeType.JSON);
 
     @Builder.Default
-    private Property<Integer> qos = Property.of(1);
+    private Property<Integer> qos = Property.ofValue(1);
 
     private Property<String> crt;
 
