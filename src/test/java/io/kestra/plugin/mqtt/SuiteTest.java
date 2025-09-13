@@ -37,10 +37,10 @@ class SuiteTest {
         RunContext runContext = runContextFactory.of(ImmutableMap.of());
         String topic = IdUtils.create();
 
-        String server = "tcp://localhost:1883";
+        String server = "tcp://127.0.0.1:1883";
 
         if (caUri != null) {
-            server = "ssl://localhost:8883";
+            server = "ssl://127.0.0.1:8883";
         }
 
         Publish publish = Publish.builder()
@@ -96,14 +96,12 @@ class SuiteTest {
     }
 
     @Test
-    @Disabled
     void v3SSL() throws Exception {
         URL resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
         this.run(AbstractMqttConnection.Version.V3, resource.toURI().getPath());
     }
 
     @Test
-    @Disabled
     void v5SSL() throws Exception {
         URL resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
         this.run(AbstractMqttConnection.Version.V5, resource.toURI().getPath());

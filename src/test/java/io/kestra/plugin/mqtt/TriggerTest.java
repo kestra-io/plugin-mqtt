@@ -71,7 +71,7 @@ class TriggerTest {
                 Publish task = Publish.builder()
                     .id(TriggerTest.class.getSimpleName())
                     .type(Publish.class.getName())
-                    .server(Property.ofValue("tcp://localhost:1883"))
+                    .server(Property.ofValue("tcp://127.0.0.1:1883"))
                     .clientId(Property.ofValue(IdUtils.create()))
                     .topic(Property.ofValue("test/trigger"))
                     .serdeType(Property.ofValue(SerdeType.JSON))
