@@ -5,7 +5,7 @@ triggers:
   - id: watch
     type: io.kestra.plugin.mqtt.Trigger
     topic: test/trigger
-    server: tcp://localhost:1883
+    server: tcp://127.0.0.1:1883
     serdeType: JSON
     mqttVersion: V5
     maxRecords: 1
