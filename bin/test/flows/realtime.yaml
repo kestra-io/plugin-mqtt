@@ -1,0 +1,15 @@
+id: realtime
+namespace: io.kestra.tests
+
+triggers:
+  - id: watch
+    type: io.kestra.plugin.mqtt.RealtimeTrigger
+    topic: test/realtime/trigger
+    server: tcp://127.0.0.1:1883
+    serdeType: JSON
+    mqttVersion: V5
+
+tasks:
+  - id: end
+    type: io.kestra.core.tasks.debugs.Return
+    format: "{{task.id}} > {{taskrun.startDate}}"

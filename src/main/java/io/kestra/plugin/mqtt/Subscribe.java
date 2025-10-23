@@ -2,8 +2,10 @@ package io.kestra.plugin.mqtt;
 
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.executions.metrics.Counter;
+import io.kestra.core.models.executions.metrics.Timer;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
@@ -38,6 +40,10 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
     title = "Subscribe to messages in an MQTT topic."
 )
 @Plugin(
+    metrics = {
+        @Metric(name = "records", type = Counter.TYPE),
+        @Metric(name = "duration", type = Timer.TYPE)
+    },
     examples = {
         @Example(
             full = true,
@@ -95,6 +101,8 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
 
     @Override
     public Output run(RunContext runContext) throws Exception {
+        long startTime = System.nanoTime();
+        
         MqttInterface connection = MqttFactory.create(runContext, this);
 
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
@@ -126,6 +134,8 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
 
             count
                 .forEach((s, integer) -> runContext.metric(Counter.of("records", integer, "topic", s)));
+
+            runContext.metric(Timer.of("duration", Duration.ofNanos(System.nanoTime() - startTime)));
 
             return Output.builder()
                 .messagesCount(count.values().stream().mapToInt(Integer::intValue).sum())
