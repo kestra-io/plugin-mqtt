@@ -3,9 +3,11 @@ package io.kestra.plugin.mqtt;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
+import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
+import io.kestra.core.models.executions.metrics.Timer;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
@@ -24,6 +26,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +41,10 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     title = "Publish a message to an MQTT topic."
 )
 @Plugin(
+    metrics = {
+        @Metric(name = "records", type = Counter.TYPE),
+        @Metric(name = "duration", type = Timer.TYPE)
+    },
     examples = {
         @Example(
             full = true,
@@ -113,6 +120,8 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
     @SuppressWarnings("unchecked")
     @Override
     public Publish.Output run(RunContext runContext) throws Exception {
+        long startTime = System.nanoTime();
+        
         MqttInterface connection = MqttFactory.create(runContext, this);
 
         Integer count = 1;
@@ -150,6 +159,7 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
         }
 
         runContext.metric(Counter.of("records", count, "topic", topic));
+        runContext.metric(Timer.of("duration", Duration.ofNanos(System.nanoTime() - startTime)));
 
         connection.close();
 
