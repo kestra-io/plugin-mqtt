@@ -5,7 +5,7 @@ import io.kestra.core.models.tasks.Task;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
+import io.kestra.core.models.property.Data.From;
 import java.time.Duration;
 
 @SuperBuilder
