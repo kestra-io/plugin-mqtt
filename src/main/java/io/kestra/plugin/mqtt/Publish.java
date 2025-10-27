@@ -5,13 +5,12 @@ import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
-import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.executions.metrics.Counter;
 import io.kestra.core.models.executions.metrics.Timer;
+import io.kestra.core.models.property.Data;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
-import io.kestra.core.serializers.FileSerde;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
@@ -20,23 +19,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import reactor.core.publisher.Flux;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @SuperBuilder
+@NoArgsConstructor
+@Getter
 @ToString
 @EqualsAndHashCode
-@Getter
-@NoArgsConstructor
 @Schema(
     title = "Publish a message to an MQTT topic."
 )
@@ -87,26 +80,21 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
         )
     }
 )
-public class Publish extends AbstractMqttConnection implements RunnableTask<Publish.Output>, MqttPropertiesInterface {
+public class Publish extends AbstractMqttConnection
+        implements RunnableTask<Publish.Output>, MqttPropertiesInterface, Data.From {
+
     @Schema(
         title = "Topic where to send message"
     )
     @NotNull
     private Property<String> topic;
 
-    @Schema(
-        title = "Source of message send",
-        description = "Can be an internal storage uri, a map or a list.",
-        anyOf = {String.class, Object[].class, Map.class }
-    )
-    @NotNull
-    @PluginProperty(dynamic = true)
     private Object from;
 
     @Schema(
-        title = "Whether or not the publish message should be retained by the messaging engine. ",
-        description = "Sending a message with retained set to true and with an empty byte array as the " +
-            "payload e.g. `null` will clear the retained message from the server."
+        title = "Whether or not the publish message should be retained by the messaging engine.",
+        description = "Sending a message with retained set to true and with an empty byte array as the payload (e.g., `null`) "
+            + "will clear the retained message from the server."
     )
     @NotNull
     @Builder.Default
@@ -117,46 +105,21 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
     @Builder.Default
     private Property<Integer> qos = Property.ofValue(1);
 
-    @SuppressWarnings("unchecked")
     @Override
     public Publish.Output run(RunContext runContext) throws Exception {
         long startTime = System.nanoTime();
-        
-        MqttInterface connection = MqttFactory.create(runContext, this);
 
-        Integer count = 1;
+        MqttInterface connection = MqttFactory.create(runContext, this);
 
         String topic = runContext.render(this.topic).as(String.class).orElseThrow();
 
-        if (this.from instanceof String || this.from instanceof List) {
-            Flux<Object> flowable;
-            if (this.from instanceof String) {
-                URI from = new URI(runContext.render((String) this.from));
-                try (BufferedReader inputStream = new BufferedReader(new InputStreamReader(runContext.storage().getFile(from)))) {
-                    flowable = FileSerde.readAll(inputStream);
-                }
-            } else {
-                flowable = Flux.fromArray(((List<?>) this.from).stream()
-                    .map(throwFunction(row -> {
-                        if (row instanceof Map) {
-                            return runContext.render((Map<String, Object>) row);
-                        } else if (row instanceof String) {
-                            return runContext.render((String) row);
-                        } else {
-                            return row;
-                        }
-                    })).toArray());
-            }
-
-            Flux<Integer> resultFlowable = flowable.map(throwFunction(row -> {
-                connection.publish(runContext, this, this.serialize(row, runContext));
-                return 1;
-            }));
-
-            count = resultFlowable.reduce(Integer::sum).blockOptional().orElse(0);
-        } else {
-            connection.publish(runContext, this, this.serialize(runContext.render((Map<String, Object>) this.from), runContext));
-        }
+        Integer count = Data.from(from).read(runContext)
+                .map(throwFunction(row -> {
+                    connection.publish(runContext, this, this.serialize(row, runContext));
+                    return 1;
+                }))
+                .reduce(Integer::sum)
+                .blockOptional().orElse(0);
 
         runContext.metric(Counter.of("records", count, "topic", topic));
         runContext.metric(Timer.of("duration", Duration.ofNanos(System.nanoTime() - startTime)));
@@ -164,11 +127,12 @@ public class Publish extends AbstractMqttConnection implements RunnableTask<Publ
         connection.close();
 
         return Output.builder()
-            .messagesCount(count)
-            .build();
+                .messagesCount(count)
+                .build();
     }
 
-    private byte[] serialize(Object row, RunContext runContext) throws JsonProcessingException, IllegalVariableEvaluationException {
+    private byte[] serialize(Object row, RunContext runContext)
+            throws JsonProcessingException, IllegalVariableEvaluationException {
         if (runContext.render(this.serdeType).as(SerdeType.class).orElseThrow() == SerdeType.JSON) {
             return JacksonMapper.ofJson().writeValueAsBytes(row);
         } else if (runContext.render(this.serdeType).as(SerdeType.class).orElseThrow() == SerdeType.STRING) {
