@@ -89,6 +89,11 @@ public class Publish extends AbstractMqttConnection
     @NotNull
     private Property<String> topic;
 
+    @Schema(
+        title = io.kestra.core.models.property.Data.From.TITLE,
+        description = io.kestra.core.models.property.Data.From.DESCRIPTION
+    )
+    @NotNull
     private Object from;
 
     @Schema(
