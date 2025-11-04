@@ -1,0 +1,8 @@
+group: io.kestra.plugin.mqtt
+name: "mqtt"
+title: "MQTT"
+description: "This sub-group of plugins contains tasks for using a MQTT message broker."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
