@@ -1,8 +1,8 @@
 group: io.kestra.plugin.mqtt
 name: "mqtt"
 title: "MQTT"
-description: "This sub-group of plugins contains tasks for using a MQTT message broker."
-body: ""
+description: "Tasks that publish, subscribe, and trigger workflows with MQTT."
+body: "Set the broker URI, client ID, topics, QoS, and credentials to send or receive MQTT messages, with triggers that start flows when subscribed messages arrive."
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"
