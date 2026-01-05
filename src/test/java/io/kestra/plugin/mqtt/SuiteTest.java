@@ -1,6 +1,7 @@
 package io.kestra.plugin.mqtt;
 
 import com.google.common.collect.ImmutableMap;
+import io.kestra.core.junit.annotations.ExecuteFlow;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -84,6 +85,29 @@ class SuiteTest {
         Map<String, Object> value = (Map<String, Object>) result.get(0).get("payload");
         assertThat(value.get("message"), is("applepearbanana"));
     }
+
+    @Test
+    void stringPayloadListShouldPublishMultipleMessages() throws Exception {
+        var runContext = runContextFactory.of(Map.of());
+
+        String topic = IdUtils.create();
+        String server = "tcp://127.0.0.1:1883";
+
+        Publish publish = Publish.builder()
+            .server(Property.ofValue(server))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(Property.ofValue("test/" + topic))
+            .serdeType(Property.ofValue(SerdeType.STRING))
+            .retain(Property.ofValue(false))
+            .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V3))
+            .from(List.of("1", "2"))
+            .build();
+
+        Publish.Output publishOutput = publish.run(runContext);
+
+        assertThat(publishOutput.getMessagesCount(), is(2));
+    }
+
 
     @Test
     void v3() throws Exception {

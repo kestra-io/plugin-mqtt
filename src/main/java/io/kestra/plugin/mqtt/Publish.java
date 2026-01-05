@@ -22,7 +22,10 @@ import lombok.experimental.SuperBuilder;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
 
+import static io.kestra.core.utils.Rethrow.throwConsumer;
 import static io.kestra.core.utils.Rethrow.throwFunction;
 
 @SuperBuilder
@@ -40,6 +43,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     },
     examples = {
         @Example(
+            title = "Publish a JSON message over MQTT (TCP)",
             full = true,
             code = """
                 id: mqtt_publish
@@ -59,6 +63,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                 """
         ),
         @Example(
+            title = "Publish a JSON message over secure MQTT (TLS)",
             full = true,
             code = """
                 id: mqtt_publish
@@ -116,9 +121,27 @@ public class Publish extends AbstractMqttConnection
 
         MqttInterface connection = MqttFactory.create(runContext, this);
 
-        String topic = runContext.render(this.topic).as(String.class).orElseThrow();
+        String rTopic = runContext.render(this.topic).as(String.class).orElseThrow();
 
-        Integer count = Data.from(from).read(runContext)
+        int count;
+        SerdeType rSerdeType = runContext.render(this.serdeType).as(SerdeType.class).orElseThrow();
+
+        if (rSerdeType == SerdeType.STRING) {
+            Iterable<?> rows = (from instanceof Iterable<?> iterable) ? iterable : List.of(from);
+
+            rows.forEach(throwConsumer(row -> {
+                String value = runContext.render(row.toString());
+                connection.publish(
+                    runContext,
+                    this,
+                    value.getBytes(StandardCharsets.UTF_8)
+                );
+            }));
+
+            count = (rows instanceof Collection<?> c) ? c.size() : 1;
+        }
+        else {
+            count = Data.from(from).readAs(runContext, Object.class, it -> it)
                 .map(throwFunction(row -> {
                     connection.publish(runContext, this, this.serialize(row, runContext));
                     return 1;
@@ -126,7 +149,9 @@ public class Publish extends AbstractMqttConnection
                 .reduce(Integer::sum)
                 .blockOptional().orElse(0);
 
-        runContext.metric(Counter.of("records", count, "topic", topic));
+        }
+
+        runContext.metric(Counter.of("records", count, "topic", rTopic));
         runContext.metric(Timer.of("duration", Duration.ofNanos(System.nanoTime() - startTime)));
 
         connection.close();
