@@ -141,7 +141,7 @@ public class Publish extends AbstractMqttConnection
             count = (rows instanceof Collection<?> c) ? c.size() : 1;
         }
         else {
-            count = Data.from(from).readAs(runContext, Object.class, it -> it)
+            count = Data.from(from).read(runContext)
                 .map(throwFunction(row -> {
                     connection.publish(runContext, this, this.serialize(row, runContext));
                     return 1;
