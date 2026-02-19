@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @NoArgsConstructor
 @Schema(
     title = "Trigger flow per MQTT message",
-    description = "Subscribes to MQTT topics and starts one execution immediately for each incoming message. Defaults to JSON payloads with QoS 1 and keeps consuming until stopped or disconnected; use `Trigger` for scheduled batch pulls instead."
+    description = "Subscribes to MQTT topics and starts one execution immediately for each incoming message. Defaults to JSON payloads with QoS 1 and keeps consuming until stopped or disconnected; use [Trigger](https://kestra.io/plugins/plugin-mqtt/triggers/io.kestra.plugin.mqtt.trigger) for scheduled batch pulls instead."
 )
 @Plugin(
     examples = {

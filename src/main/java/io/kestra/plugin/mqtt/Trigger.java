@@ -24,7 +24,7 @@ import java.util.Optional;
 @NoArgsConstructor
 @Schema(
     title = "Poll MQTT topics on a schedule",
-    description = "Polls MQTT topics every `interval` (60s default) and starts one execution only when at least one message is read. Collects messages up to `maxRecords` or `maxDuration`, stores them in internal storage (use `{{ trigger.uri }}` and `{{ trigger.messagesCount }}`), and defaults to JSON deserialization with QoS 1; prefer `RealtimeTrigger` for per-message executions."
+    description = "Polls MQTT topics every `interval` (60s default) and starts one execution only when at least one message is read. Collects messages up to `maxRecords` or `maxDuration`, stores them in internal storage (use `{{ trigger.uri }}` and `{{ trigger.messagesCount }}`), and defaults to JSON deserialization with QoS 1; prefer [RealtimeTrigger](https://kestra.io/plugins/plugin-mqtt/triggers/io.kestra.plugin.mqtt.realtimetrigger) for per-message executions."
 )
 @Plugin(
     examples = {
