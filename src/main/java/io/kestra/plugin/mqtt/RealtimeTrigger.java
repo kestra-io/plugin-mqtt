@@ -30,8 +30,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Trigger a flow on message consumption in real-time from MQTT topics.",
-    description = "If you would like to consume multiple messages processed within a given time frame and process them in batch, you can use the [io.kestra.plugin.mqtt.Trigger](https://kestra.io/plugins/plugin-mqtt/triggers/io.kestra.plugin.mqtt.trigger) instead."
+    title = "Trigger flow per MQTT message",
+    description = "Subscribes to MQTT topics and starts one execution immediately for each incoming message. Defaults to JSON payloads with QoS 1 and keeps consuming until stopped or disconnected; use `Trigger` for scheduled batch pulls instead."
 )
 @Plugin(
     examples = {
@@ -52,6 +52,7 @@ import java.util.concurrent.atomic.AtomicReference;
                     type: io.kestra.plugin.mqtt.RealtimeTrigger
                     server: tcp://localhost:1883
                     clientId: kestraProducer
+                    qos: 1
                     topic:
                       - kestra/sensors/cpu
                       - kestra/sensors/mem

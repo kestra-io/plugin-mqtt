@@ -34,7 +34,8 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
 @ToString
 @EqualsAndHashCode
 @Schema(
-    title = "Publish a message to an MQTT topic."
+    title = "Publish messages to MQTT topics",
+    description = "Publishes data from `from` to a single MQTT topic using the chosen serializer (e.g., JSON or STRING) and QoS (default 1). `retain` defaults to false; send an empty payload with `retain: true` to clear retained state on the broker."
 )
 @Plugin(
     metrics = {
@@ -54,6 +55,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.mqtt.Publish
                     server: tcp://localhost:1883
                     clientId: kestraProducer
+                    qos: 1
                     topic: kestra/sensors/cpu
                     serdeType: JSON
                     retain: true
@@ -74,6 +76,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     type: io.kestra.plugin.mqtt.Publish
                     server: ssl://localhost:8883
                     clientId: kestraProducer
+                    qos: 2
                     topic: kestra/sensors/cpu
                     crt: /home/path/to/ca.crt
                     serdeType: JSON
@@ -89,7 +92,7 @@ public class Publish extends AbstractMqttConnection
         implements RunnableTask<Publish.Output>, MqttPropertiesInterface, Data.From {
 
     @Schema(
-        title = "Topic where to send message"
+        title = "Topic to publish to"
     )
     @NotNull
     private Property<String> topic;
@@ -176,7 +179,7 @@ public class Publish extends AbstractMqttConnection
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "Number of message published"
+            title = "Number of messages published"
         )
         private final Integer messagesCount;
     }
