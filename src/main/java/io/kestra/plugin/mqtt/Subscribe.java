@@ -37,7 +37,8 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Subscribe to messages in an MQTT topic."
+    title = "Subscribe and buffer MQTT messages",
+    description = "Subscribes to one or more MQTT topics, writes received messages to internal storage, and returns the `uri` plus `messagesCount`. Stops when `maxRecords` or `maxDuration` is reached; defaults to JSON payloads with QoS 1."
 )
 @Plugin(
     metrics = {
@@ -56,6 +57,8 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
                     type: io.kestra.plugin.mqtt.Subscribe
                     server: tcp://localhost:1883
                     clientId: kestraProducer
+                    qos: 1
+                    maxDuration: 30s
                     topic:
                       - kestra/sensors/cpu
                       - kestra/sensors/mem
@@ -74,6 +77,8 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
                     type: io.kestra.plugin.mqtt.Subscribe
                     server: ssl://localhost:8883
                     clientId: kestraProducer
+                    qos: 2
+                    maxDuration: 1m
                     topic:
                       - kestra/sensors/cpu
                       - kestra/sensors/mem
@@ -178,12 +183,12 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "Number of message produced"
+            title = "Number of messages consumed"
         )
         private final Integer messagesCount;
 
         @Schema(
-            title = "URI of a kestra internal storage file"
+            title = "URI of the internal storage file"
         )
         private URI uri;
     }

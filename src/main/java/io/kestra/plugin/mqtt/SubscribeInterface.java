@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull;
 
 public interface SubscribeInterface {
     @Schema(
-        title = "Topic where to consume message",
-        description = "Can be a string or a List of string to consume from multiple topic"
+        title = "Topics to consume",
+        description = "String or list of strings; when multiple topics are provided they are all subscribed."
     )
     @NotNull
     @PluginProperty(dynamic = true)
