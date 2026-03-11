@@ -1,6 +1,12 @@
 package io.kestra.plugin.mqtt;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
@@ -15,15 +21,11 @@ import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 import static io.kestra.core.utils.Rethrow.throwFunction;
@@ -89,7 +91,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
     }
 )
 public class Publish extends AbstractMqttConnection
-        implements RunnableTask<Publish.Output>, MqttPropertiesInterface, Data.From {
+    implements RunnableTask<Publish.Output>, MqttPropertiesInterface, Data.From {
 
     @Schema(
         title = "Topic to publish to"
@@ -132,7 +134,8 @@ public class Publish extends AbstractMqttConnection
         if (rSerdeType == SerdeType.STRING) {
             Iterable<?> rows = (from instanceof Iterable<?> iterable) ? iterable : List.of(from);
 
-            rows.forEach(throwConsumer(row -> {
+            rows.forEach(throwConsumer(row ->
+            {
                 String value = runContext.render(row.toString());
                 connection.publish(
                     runContext,
@@ -142,10 +145,10 @@ public class Publish extends AbstractMqttConnection
             }));
 
             count = (rows instanceof Collection<?> c) ? c.size() : 1;
-        }
-        else {
+        } else {
             count = Data.from(from).read(runContext)
-                .map(throwFunction(row -> {
+                .map(throwFunction(row ->
+                {
                     connection.publish(runContext, this, this.serialize(row, runContext));
                     return 1;
                 }))
@@ -160,12 +163,12 @@ public class Publish extends AbstractMqttConnection
         connection.close();
 
         return Output.builder()
-                .messagesCount(count)
-                .build();
+            .messagesCount(count)
+            .build();
     }
 
     private byte[] serialize(Object row, RunContext runContext)
-            throws JsonProcessingException, IllegalVariableEvaluationException {
+        throws JsonProcessingException, IllegalVariableEvaluationException {
         if (runContext.render(this.serdeType).as(SerdeType.class).orElseThrow() == SerdeType.JSON) {
             return JacksonMapper.ofJson().writeValueAsBytes(row);
         } else if (runContext.render(this.serdeType).as(SerdeType.class).orElseThrow() == SerdeType.STRING) {

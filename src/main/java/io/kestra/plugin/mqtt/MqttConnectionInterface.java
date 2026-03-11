@@ -1,10 +1,11 @@
 package io.kestra.plugin.mqtt;
 
+import java.time.Duration;
+
 import io.kestra.core.models.property.Property;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-
-import java.time.Duration;
 
 public interface MqttConnectionInterface {
     @Schema(
@@ -66,7 +67,6 @@ public interface MqttConnectionInterface {
         title = "The user name to use for the connection."
     )
     Property<String> getUsername();
-
 
     @Schema(
         title = "The password to use for the connection."

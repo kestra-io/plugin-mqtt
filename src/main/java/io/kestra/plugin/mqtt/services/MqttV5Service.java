@@ -1,11 +1,11 @@
 package io.kestra.plugin.mqtt.services;
 
-import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.mqtt.AbstractMqttConnection;
-import io.kestra.plugin.mqtt.Publish;
-import io.kestra.plugin.mqtt.Subscribe;
-import lombok.Getter;
-import lombok.Setter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
+import java.util.function.Consumer;
+
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.paho.mqttv5.client.IMqttToken;
 import org.eclipse.paho.mqttv5.client.MqttAsyncClient;
@@ -17,11 +17,13 @@ import org.eclipse.paho.mqttv5.common.MqttMessage;
 import org.eclipse.paho.mqttv5.common.MqttSubscription;
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.List;
-import java.util.function.Consumer;
+import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.mqtt.AbstractMqttConnection;
+import io.kestra.plugin.mqtt.Publish;
+import io.kestra.plugin.mqtt.Subscribe;
+
+import lombok.Getter;
+import lombok.Setter;
 
 public class MqttV5Service implements MqttInterface {
     MqttAsyncClient client;
@@ -101,16 +103,18 @@ public class MqttV5Service implements MqttInterface {
             subscriptions[i] = new MqttSubscription(topics[i], runContext.render(subscribe.getQos()).as(Integer.class).orElseThrow());
         }
 
-        client.subscribe(subscriptions, null, null, (topic, message) -> {
+        client.subscribe(subscriptions, null, null, (topic, message) ->
+        {
             try {
-                consumer.accept(Message.builder()
-                    .topic(topic)
-                    .id(message.getId())
-                    .qos(message.getQos())
-                    .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
-                    .retain(message.isRetained())
-                    .properties(message.getProperties().getValidProperties())
-                    .build()
+                consumer.accept(
+                    Message.builder()
+                        .topic(topic)
+                        .id(message.getId())
+                        .qos(message.getQos())
+                        .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
+                        .retain(message.isRetained())
+                        .properties(message.getProperties().getValidProperties())
+                        .build()
                 );
             } catch (Exception e) {
                 runContext.logger().error(

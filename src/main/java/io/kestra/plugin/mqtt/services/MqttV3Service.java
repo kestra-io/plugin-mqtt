@@ -1,22 +1,26 @@
 package io.kestra.plugin.mqtt.services;
 
-import com.google.common.primitives.Ints;
-import io.kestra.core.runners.RunContext;
-import io.kestra.plugin.mqtt.AbstractMqttConnection;
-import io.kestra.plugin.mqtt.Publish;
-import io.kestra.plugin.mqtt.Subscribe;
-import lombok.Getter;
-import lombok.Setter;
-import org.apache.commons.lang3.StringUtils;
-import org.eclipse.paho.client.mqttv3.*;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
-
-import javax.net.ssl.SSLSocketFactory;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Consumer;
+
+import javax.net.ssl.SSLSocketFactory;
+
+import org.apache.commons.lang3.StringUtils;
+import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+
+import com.google.common.primitives.Ints;
+
+import io.kestra.core.runners.RunContext;
+import io.kestra.plugin.mqtt.AbstractMqttConnection;
+import io.kestra.plugin.mqtt.Publish;
+import io.kestra.plugin.mqtt.Subscribe;
+
+import lombok.Getter;
+import lombok.Setter;
 
 public class MqttV3Service implements MqttInterface {
     MqttAsyncClient client;
@@ -88,15 +92,18 @@ public class MqttV3Service implements MqttInterface {
     public void subscribe(RunContext runContext, Subscribe subscribe, Consumer<Message> consumer) throws Exception {
         String[] topics = subscribe.topics(runContext);
 
-        IMqttMessageListener messageListener = (topic, message) -> {
+        IMqttMessageListener messageListener = (topic, message) ->
+        {
             try {
-                consumer.accept(Message.builder()
-                    .topic(topic)
-                    .id(message.getId())
-                    .qos(message.getQos())
-                    .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
-                    .retain(message.isRetained())
-                    .build());
+                consumer.accept(
+                    Message.builder()
+                        .topic(topic)
+                        .id(message.getId())
+                        .qos(message.getQos())
+                        .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
+                        .retain(message.isRetained())
+                        .build()
+                );
             } catch (Exception e) {
                 runContext.logger().error(
                     "Cannot process message {id: {}} from topic '{}'. Cause: {}",
@@ -110,7 +117,6 @@ public class MqttV3Service implements MqttInterface {
 
         IMqttMessageListener[] listeners = new IMqttMessageListener[topics.length];
         Arrays.fill(listeners, messageListener);
-
 
         ArrayList<Integer> qos = new ArrayList<>();
         for (int i = 0; i < topics.length; i++) {

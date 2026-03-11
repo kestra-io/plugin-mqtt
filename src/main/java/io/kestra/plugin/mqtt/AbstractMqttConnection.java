@@ -1,12 +1,13 @@
 package io.kestra.plugin.mqtt;
 
+import java.time.Duration;
+
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.Task;
+
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.time.Duration;
 
 @SuperBuilder
 @ToString

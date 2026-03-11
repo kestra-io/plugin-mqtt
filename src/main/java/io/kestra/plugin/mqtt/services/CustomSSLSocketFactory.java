@@ -1,19 +1,20 @@
 package io.kestra.plugin.mqtt.services;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManagerFactory;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
+
 public class CustomSSLSocketFactory {
 
-	public static SSLSocketFactory createSSLSocketFactory(String certificateFilePath) throws Exception {
-		try (InputStream certificateInputStream = new FileInputStream(certificateFilePath)) {
-			// Load the certificate file
+    public static SSLSocketFactory createSSLSocketFactory(String certificateFilePath) throws Exception {
+        try (InputStream certificateInputStream = new FileInputStream(certificateFilePath)) {
+            // Load the certificate file
 
             // Load certificate into KeyStore
             KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
@@ -30,7 +31,7 @@ public class CustomSSLSocketFactory {
             sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
 
             return sslContext.getSocketFactory();
-		}
-	}
+        }
+    }
 
 }

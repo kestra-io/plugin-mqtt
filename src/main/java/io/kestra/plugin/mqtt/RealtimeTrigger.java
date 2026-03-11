@@ -1,5 +1,13 @@
 package io.kestra.plugin.mqtt;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.reactivestreams.Publisher;
+
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
@@ -11,18 +19,12 @@ import io.kestra.plugin.mqtt.services.Message;
 import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
-
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 @SuperBuilder
 @ToString
@@ -117,7 +119,6 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
             .qos(this.qos)
             .build();
 
-
         return Flux
             .from(publisher(task, conditionContext.getRunContext()))
             .map(record -> TriggerService.generateRealtimeExecution(this, conditionContext, context, new Output(record)));
@@ -126,19 +127,22 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
     public Publisher<Message> publisher(final Subscribe task, final RunContext runContext) throws Exception {
         final MqttInterface connection = MqttFactory.create(runContext, task);
 
-        return Flux.create(emitter -> {
+        return Flux.create(emitter ->
+        {
             try {
 
                 final AtomicReference<Throwable> error = new AtomicReference<>();
 
                 // The MQTT client is automatically shutdown if an exception is thrown in the client
                 // e.g., while processing a message
-                connection.onDisconnected(throwable -> {
+                connection.onDisconnected(throwable ->
+                {
                     error.set(throwable);
                     isActive.set(false); // proactively stop consuming
                 });
 
-                emitter.onDispose(() -> {
+                emitter.onDispose(() ->
+                {
                     try {
                         connection.unsubscribe(runContext, task);
                         connection.close();

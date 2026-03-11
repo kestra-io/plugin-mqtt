@@ -1,5 +1,5 @@
 @PluginSubGroup(
-    description = "This sub-group of plugins contains tasks for using a MQTT message broker.",categories = {
+    description = "This sub-group of plugins contains tasks for using a MQTT message broker.", categories = {
         PluginSubGroup.PluginCategory.DATA,
         PluginSubGroup.PluginCategory.INFRASTRUCTURE
     }

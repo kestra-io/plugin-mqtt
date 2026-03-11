@@ -1,5 +1,16 @@
 package io.kestra.plugin.mqtt;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.net.URI;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
@@ -13,20 +24,10 @@ import io.kestra.core.serializers.FileSerde;
 import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.net.URI;
-import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 import static io.kestra.core.utils.Rethrow.throwRunnable;
@@ -107,7 +108,7 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @Override
     public Output run(RunContext runContext) throws Exception {
         long startTime = System.nanoTime();
-        
+
         MqttInterface connection = MqttFactory.create(runContext, this);
 
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
@@ -118,8 +119,10 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
             AtomicInteger total = new AtomicInteger();
             ZonedDateTime started = ZonedDateTime.now();
 
-            thread = Thread.ofVirtual().name("mqtt-subscribe").start(throwRunnable(() -> {
-                connection.subscribe(runContext, this, throwConsumer(message -> {
+            thread = Thread.ofVirtual().name("mqtt-subscribe").start(throwRunnable(() ->
+            {
+                connection.subscribe(runContext, this, throwConsumer(message ->
+                {
                     FileSerde.write(output, message);
 
                     total.getAndIncrement();
