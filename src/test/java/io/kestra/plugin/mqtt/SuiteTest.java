@@ -3,6 +3,8 @@ package io.kestra.plugin.mqtt;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import jakarta.inject.Inject;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @KestraTest
 class SuiteTest {
@@ -125,13 +128,46 @@ class SuiteTest {
 
     @Test
     void v3SSL() throws Exception {
-        URL resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
+        var resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
         this.run(AbstractMqttConnection.Version.V3, resource.toURI().getPath());
     }
 
     @Test
     void v5SSL() throws Exception {
-        URL resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
+        var resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
         this.run(AbstractMqttConnection.Version.V5, resource.toURI().getPath());
+    }
+
+    @Test
+    void v3SSLWithPemContent() throws Exception {
+        var resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
+        var pemContent = Files.readString(Path.of(resource.toURI()));
+        this.run(AbstractMqttConnection.Version.V3, pemContent);
+    }
+
+    @Test
+    void v5SSLWithPemContent() throws Exception {
+        var resource = SuiteTest.class.getClassLoader().getResource("crt/ca.crt");
+        var pemContent = Files.readString(Path.of(resource.toURI()));
+        this.run(AbstractMqttConnection.Version.V5, pemContent);
+    }
+
+    @Test
+    void shouldFailWithInvalidCrt() {
+        var runContext = runContextFactory.of(ImmutableMap.of());
+        var topic = IdUtils.create();
+
+        var publish = Publish.builder()
+            .server(Property.ofValue("ssl://127.0.0.1:8883"))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(Property.ofValue("test/" + topic))
+            .serdeType(Property.ofValue(SerdeType.JSON))
+            .retain(Property.ofValue(true))
+            .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V5))
+            .crt(Property.ofValue("not-a-valid-cert-or-path"))
+            .from(List.of(Map.of("key", "value")))
+            .build();
+
+        assertThrows(IllegalArgumentException.class, () -> publish.run(runContext));
     }
 }

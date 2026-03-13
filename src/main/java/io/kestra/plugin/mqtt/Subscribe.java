@@ -68,9 +68,10 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
                 """
         ),
         @Example(
+            title = "Subscribe to MQTT topics over TLS",
             full = true,
             code = """
-                id: mqtt_subscribe
+                id: mqtt_subscribe_ssl
                 namespace: company.team
 
                 tasks:
@@ -83,7 +84,7 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
                     topic:
                       - kestra/sensors/cpu
                       - kestra/sensors/mem
-                    crt: /home/path/to/ca.crt
+                    crt: "{{ secret('MQTT_CA_CERT') }}"
                     serdeType: JSON
                     maxRecords: 10
                 """
@@ -98,8 +99,6 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
 
     @Builder.Default
     private Property<Integer> qos = Property.ofValue(1);
-
-    private Property<String> crt;
 
     private Property<Integer> maxRecords;
 
