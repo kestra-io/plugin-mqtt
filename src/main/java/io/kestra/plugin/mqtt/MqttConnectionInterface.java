@@ -74,7 +74,14 @@ public interface MqttConnectionInterface {
     Property<String> getPassword();
 
     @Schema(
-        title = "Server certificate file path."
+        title = "CA certificate for TLS connections.",
+        description = """
+            The CA certificate used to verify the MQTT broker's server certificate when connecting over TLS (`ssl://`).
+            Accepts one of the following formats:
+            - **PEM content**: the full PEM-encoded certificate string (e.g. from `{{ secret('MQTT_CA_CERT') }}`)
+            - **Kestra internal storage URI**: a `kestra://` URI pointing to a certificate file from a previous task output
+            - **Local file path**: an absolute path to a certificate file on the Kestra worker filesystem
+            """
     )
     Property<String> getCrt();
 }
