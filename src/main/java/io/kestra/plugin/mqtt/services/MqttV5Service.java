@@ -1,12 +1,12 @@
 package io.kestra.plugin.mqtt.services;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.apache.commons.lang3.StringUtils;
+import javax.net.ssl.SSLSocketFactory;
+
 import org.eclipse.paho.mqttv5.client.IMqttToken;
 import org.eclipse.paho.mqttv5.client.MqttAsyncClient;
 import org.eclipse.paho.mqttv5.client.MqttCallback;
@@ -22,18 +22,11 @@ import io.kestra.plugin.mqtt.AbstractMqttConnection;
 import io.kestra.plugin.mqtt.Publish;
 import io.kestra.plugin.mqtt.Subscribe;
 
-import lombok.Getter;
-import lombok.Setter;
-
 public class MqttV5Service implements MqttInterface {
     MqttAsyncClient client;
 
-    @Getter
-    @Setter
-    private String crt;
-
     @Override
-    public void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception {
+    public void connect(RunContext runContext, AbstractMqttConnection connection, SSLSocketFactory sslSocketFactory) throws Exception {
         try {
             client = new MqttAsyncClient(
                 runContext.render(connection.getServer()).as(String.class).orElse(null),
@@ -41,7 +34,7 @@ public class MqttV5Service implements MqttInterface {
                 new MemoryPersistence()
             );
 
-            org.eclipse.paho.mqttv5.client.MqttConnectionOptions connectOptions = new org.eclipse.paho.mqttv5.client.MqttConnectionOptions();
+            var connectOptions = new org.eclipse.paho.mqttv5.client.MqttConnectionOptions();
 
             if (connection.getConnectionTimeout() != null) {
                 connectOptions.setConnectionTimeout((int) runContext.render(connection.getConnectionTimeout()).as(Duration.class).orElseThrow().toSeconds());
@@ -59,15 +52,15 @@ public class MqttV5Service implements MqttInterface {
                 connectOptions.setPassword(runContext.render(connection.getPassword()).as(String.class).orElseThrow().getBytes(StandardCharsets.UTF_8));
             }
 
-            if (!StringUtils.isBlank(crt) && Path.of(crt).toFile().exists()) {
-                connectOptions.setSocketFactory(CustomSSLSocketFactory.createSSLSocketFactory(crt));
+            if (sslSocketFactory != null) {
+                connectOptions.setSocketFactory(sslSocketFactory);
             }
 
             if (connection.getHttpsHostnameVerificationEnabled() != null) {
                 connectOptions.setHttpsHostnameVerificationEnabled(runContext.render(connection.getHttpsHostnameVerificationEnabled()).as(Boolean.class).orElseThrow());
             }
 
-            IMqttToken connect = client.connect(connectOptions);
+            var connect = client.connect(connectOptions);
             connect.waitForCompletion();
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);

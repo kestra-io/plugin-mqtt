@@ -113,6 +113,7 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
             .authMethod(this.authMethod)
             .username(this.username)
             .password(this.password)
+            .crt(this.crt)
             .mqttVersion(this.mqttVersion)
             .topic(this.topic)
             .serdeType(this.serdeType)

@@ -70,7 +70,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
             title = "Publish a JSON message over secure MQTT (TLS)",
             full = true,
             code = """
-                id: mqtt_publish
+                id: mqtt_publish_ssl
                 namespace: company.team
 
                 tasks:
@@ -80,7 +80,7 @@ import static io.kestra.core.utils.Rethrow.throwFunction;
                     clientId: kestraProducer
                     qos: 2
                     topic: kestra/sensors/cpu
-                    crt: /home/path/to/ca.crt
+                    crt: "{{ secret('MQTT_CA_CERT') }}"
                     serdeType: JSON
                     retain: true
                     from:

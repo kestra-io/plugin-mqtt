@@ -2,13 +2,15 @@ package io.kestra.plugin.mqtt.services;
 
 import java.util.function.Consumer;
 
+import javax.net.ssl.SSLSocketFactory;
+
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.AbstractMqttConnection;
 import io.kestra.plugin.mqtt.Publish;
 import io.kestra.plugin.mqtt.Subscribe;
 
 public interface MqttInterface {
-    void connect(RunContext runContext, AbstractMqttConnection connection) throws Exception;
+    void connect(RunContext runContext, AbstractMqttConnection connection, SSLSocketFactory sslSocketFactory) throws Exception;
 
     void publish(RunContext runContext, Publish publish, byte[] message) throws Exception;
 
@@ -19,12 +21,4 @@ public interface MqttInterface {
     void close() throws Exception;
 
     void onDisconnected(final Consumer<Throwable> handler);
-
-    default MqttInterface create(AbstractMqttConnection.Version version) {
-        if (version == AbstractMqttConnection.Version.V5) {
-            return new MqttV5Service();
-        } else {
-            return new MqttV3Service();
-        }
-    }
 }
