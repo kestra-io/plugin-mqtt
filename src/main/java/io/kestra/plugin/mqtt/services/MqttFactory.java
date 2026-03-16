@@ -12,6 +12,7 @@ import java.security.GeneralSecurityException;
 import javax.net.ssl.SSLSocketFactory;
 
 import io.kestra.core.runners.RunContext;
+import io.kestra.core.storages.StorageContext;
 import io.kestra.plugin.mqtt.AbstractMqttConnection;
 import io.kestra.plugin.mqtt.MqttConnectionInterface;
 
@@ -64,7 +65,7 @@ public abstract class MqttFactory {
 
     private static InputStream resolveInputStream(RunContext runContext, String crt) throws Exception {
         // Internal storage URI (e.g. kestra:///...)
-        if (crt.startsWith("kestra://")) {
+        if (crt.startsWith(StorageContext.KESTRA_PROTOCOL)) {
             return runContext.storage().getFile(URI.create(crt));
         }
 
