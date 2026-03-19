@@ -1,0 +1,108 @@
+id: all_mqtt
+namespace: sanitychecks.plugin-mqtt
+
+tasks:
+  - id: init
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      port: "{{ randomPort() }}"
+
+  - id: docker_start
+    type: io.kestra.plugin.docker.Run
+    containerImage: eclipse-mosquitto:2
+    entryPoint:
+      - /bin/sh
+      - -c
+    inputFiles:
+      mosquitto.conf: |
+        listener 1883 0.0.0.0
+        allow_anonymous true
+        persistence false
+    commands:
+      - exec mosquitto -c mosquitto.conf
+    portBindings:
+      - "{{ outputs.init.values.port }}:1883"
+    wait: false
+
+  - id: wait_broker
+    type: io.kestra.plugin.core.flow.Sleep
+    duration: PT5S
+
+  - id: publish_json_cpu
+    type: io.kestra.plugin.mqtt.Publish
+    server: "tcp://localhost:{{ outputs.init.values.port }}"
+    clientId: "mqtt-json-cpu-{{ execution.id }}"
+    topic: "sanity/{{ execution.id }}/json/cpu"
+    serdeType: JSON
+    mqttVersion: V5
+    retain: true
+    from:
+      sensor: cpu
+      value: 0.64
+
+  - id: publish_json_mem
+    type: io.kestra.plugin.mqtt.Publish
+    server: "tcp://localhost:{{ outputs.init.values.port }}"
+    clientId: "mqtt-json-mem-{{ execution.id }}"
+    topic: "sanity/{{ execution.id }}/json/mem"
+    serdeType: JSON
+    mqttVersion: V5
+    retain: true
+    from:
+      sensor: mem
+      value: 0.82
+
+  - id: subscribe_json
+    type: io.kestra.plugin.mqtt.Subscribe
+    server: "tcp://localhost:{{ outputs.init.values.port }}"
+    clientId: "mqtt-sub-json-{{ execution.id }}"
+    topic:
+      - "sanity/{{ execution.id }}/json/cpu"
+      - "sanity/{{ execution.id }}/json/mem"
+    serdeType: JSON
+    mqttVersion: V5
+    maxRecords: 2
+    maxDuration: PT5S
+
+  - id: publish_string
+    type: io.kestra.plugin.mqtt.Publish
+    server: "tcp://localhost:{{ outputs.init.values.port }}"
+    clientId: "mqtt-string-pub-{{ execution.id }}"
+    topic: "sanity/{{ execution.id }}/string"
+    serdeType: STRING
+    mqttVersion: V3
+    retain: true
+    from: mqtt-string-payload
+
+  - id: subscribe_string
+    type: io.kestra.plugin.mqtt.Subscribe
+    server: "tcp://localhost:{{ outputs.init.values.port }}"
+    clientId: "mqtt-string-sub-{{ execution.id }}"
+    topic: "sanity/{{ execution.id }}/string"
+    serdeType: STRING
+    mqttVersion: V3
+    maxRecords: 1
+    maxDuration: PT5S
+
+  - id: assert
+    type: io.kestra.plugin.core.execution.Assert
+    conditions:
+      - "{{ outputs.publish_json_cpu.messagesCount == 1 }}"
+      - "{{ outputs.publish_json_mem.messagesCount == 1 }}"
+      - "{{ outputs.subscribe_json.messagesCount == 2 }}"
+      - "{{ fromIon(read(outputs.subscribe_json.uri), allRows=true) | length == 2 }}"
+      - "{{ fromIon(read(outputs.subscribe_json.uri), allRows=true)[0].payload.sensor == 'cpu' or fromIon(read(outputs.subscribe_json.uri), allRows=true)[0].payload.sensor == 'mem' }}"
+      - "{{ fromIon(read(outputs.subscribe_json.uri), allRows=true)[1].payload.sensor == 'cpu' or fromIon(read(outputs.subscribe_json.uri), allRows=true)[1].payload.sensor == 'mem' }}"
+      - "{{ fromIon(read(outputs.subscribe_json.uri), allRows=true)[0].payload.value + fromIon(read(outputs.subscribe_json.uri), allRows=true)[1].payload.value == 1.46 }}"
+      - "{{ outputs.publish_string.messagesCount == 1 }}"
+      - "{{ outputs.subscribe_string.messagesCount == 1 }}"
+      - "{{ fromIon(read(outputs.subscribe_string.uri), allRows=true)[0].payload == 'mqtt-string-payload' }}"
+
+finally:
+  - id: purge
+    type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
+
+  - id: docker_stop
+    type: io.kestra.plugin.docker.Stop
+    containerId: "{{ outputs.docker_start.taskRunner.containerId }}"
+    kill: true
