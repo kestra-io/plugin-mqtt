@@ -6,6 +6,7 @@ import io.kestra.core.models.property.Property;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import io.kestra.core.models.annotations.PluginProperty;
 
 public interface MqttConnectionInterface {
     @Schema(
@@ -20,6 +21,7 @@ public interface MqttConnectionInterface {
             "If the port is not specified, it will default to 1883 for `tcp://`\" URIs, and 8883 for `ssl://` URIs."
     )
     @NotNull
+    @PluginProperty(group = "main")
     Property<String> getServer();
 
     @Schema(
@@ -39,6 +41,7 @@ public interface MqttConnectionInterface {
             "of messages is required."
     )
     @NotNull
+    @PluginProperty(group = "main")
     Property<String> getClientId();
 
     @Schema(
@@ -47,12 +50,14 @@ public interface MqttConnectionInterface {
             "the MQTT server to be established. The default timeout is 30 seconds. A value of 0 disables timeout " +
             "processing meaning the client will wait until the network connection is made successfully or fails."
     )
+    @PluginProperty(group = "execution")
     Property<Duration> getConnectionTimeout();
 
     @Schema(
         title = "Disable ssl verification.",
         description = "This value will allow all ca certificate."
     )
+    @PluginProperty(group = "advanced")
     Property<Boolean> getHttpsHostnameVerificationEnabled();
 
     @Schema(
@@ -61,16 +66,19 @@ public interface MqttConnectionInterface {
             "If set, this value contains the name of the authentication method to be used for extended " +
             "authentication. If null, extended authentication is not performed."
     )
+    @PluginProperty(group = "connection")
     Property<String> getAuthMethod();
 
     @Schema(
         title = "The user name to use for the connection."
     )
+    @PluginProperty(group = "connection")
     Property<String> getUsername();
 
     @Schema(
         title = "The password to use for the connection."
     )
+    @PluginProperty(group = "connection")
     Property<String> getPassword();
 
     @Schema(
@@ -83,5 +91,6 @@ public interface MqttConnectionInterface {
             - **Local file path**: an absolute path to a certificate file on the Kestra worker filesystem
             """
     )
+    @PluginProperty(group = "advanced")
     Property<String> getCrt();
 }

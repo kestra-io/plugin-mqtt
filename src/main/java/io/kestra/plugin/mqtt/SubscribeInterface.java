@@ -11,7 +11,7 @@ public interface SubscribeInterface {
         description = "String or list of strings; when multiple topics are provided they are all subscribed."
     )
     @NotNull
-    @PluginProperty(dynamic = true)
+    @PluginProperty(dynamic = true, group = "main")
     Object getTopic();
 
 }
