@@ -31,6 +31,7 @@ import lombok.experimental.SuperBuilder;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 import static io.kestra.core.utils.Rethrow.throwRunnable;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -92,16 +93,21 @@ import static io.kestra.core.utils.Rethrow.throwRunnable;
     }
 )
 public class Subscribe extends AbstractMqttConnection implements RunnableTask<Subscribe.Output>, SubscribeInterface, ConsumeInterface, MqttPropertiesInterface {
+    @PluginProperty(group = "main")
     private Object topic;
 
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<SerdeType> serdeType = Property.ofValue(SerdeType.JSON);
 
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Integer> qos = Property.ofValue(1);
 
+    @PluginProperty(group = "advanced")
     private Property<Integer> maxRecords;
 
+    @PluginProperty(group = "execution")
     private Property<Duration> maxDuration;
 
     @Override

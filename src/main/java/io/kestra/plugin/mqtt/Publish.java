@@ -29,6 +29,7 @@ import lombok.experimental.SuperBuilder;
 
 import static io.kestra.core.utils.Rethrow.throwConsumer;
 import static io.kestra.core.utils.Rethrow.throwFunction;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @NoArgsConstructor
@@ -97,6 +98,7 @@ public class Publish extends AbstractMqttConnection
         title = "Topic to publish to"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> topic;
 
     @Schema(
@@ -104,6 +106,7 @@ public class Publish extends AbstractMqttConnection
         description = io.kestra.core.models.property.Data.From.DESCRIPTION
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Object from;
 
     @Schema(
@@ -113,11 +116,14 @@ public class Publish extends AbstractMqttConnection
     )
     @NotNull
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Boolean> retain = Property.ofValue(false);
 
+    @PluginProperty(group = "main")
     private Property<SerdeType> serdeType;
 
     @Builder.Default
+    @PluginProperty(group = "advanced")
     private Property<Integer> qos = Property.ofValue(1);
 
     @Override
