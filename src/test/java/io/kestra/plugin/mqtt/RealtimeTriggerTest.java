@@ -2,6 +2,7 @@ package io.kestra.plugin.mqtt;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -12,25 +13,34 @@ import com.google.common.collect.ImmutableMap;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.queues.QueueFactoryInterface;
-import io.kestra.core.queues.QueueInterface;
+import io.kestra.core.queues.DispatchQueueInterface;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
+import io.kestra.core.runners.FlowListeners;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.core.utils.TestsUtils;
+import io.kestra.jdbc.runner.JdbcScheduler;
 import io.kestra.plugin.mqtt.services.SerdeType;
+import io.kestra.scheduler.AbstractScheduler;
+import io.kestra.worker.DefaultWorker;
+
+import io.micronaut.context.ApplicationContext;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import reactor.core.publisher.Flux;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
-@KestraTest(startRunner = true, startScheduler = true)
+@KestraTest
 class RealtimeTriggerTest {
     @Inject
-    @Named(QueueFactoryInterface.EXECUTION_NAMED)
-    private QueueInterface<Execution> executionQueue;
+    private ApplicationContext applicationContext;
+
+    @Inject
+    private FlowListeners flowListenersService;
+
+    @Inject
+    private DispatchQueueInterface<Execution> executionQueue;
 
     @Inject
     protected LocalFlowRepositoryLoader repositoryLoader;
@@ -40,52 +50,70 @@ class RealtimeTriggerTest {
     @SuppressWarnings("unchecked")
     @Test
     void flow() throws Exception {
+        // mock flow listeners
         CountDownLatch queueCount = new CountDownLatch(1);
-        Flux<Execution> receive = TestsUtils.receive(executionQueue, execution -> {
-            queueCount.countDown();
-            assertThat(execution.getLeft().getFlowId(), is("realtime"));
-        });
+        AtomicReference<Execution> last = new AtomicReference<>();
 
-        String messageText = "hello trigger";
-        String triggerText = "Trigger is completed";
+        // scheduler
+        try (DefaultWorker worker = applicationContext.createBean(DefaultWorker.class, UUID.randomUUID().toString(), 8, null)) {
+            try (
+                AbstractScheduler scheduler = new JdbcScheduler(
+                    this.applicationContext,
+                    this.flowListenersService
+                );
+            ) {
+                // wait for execution
+                executionQueue.addListener(execution -> {
+                    last.set(execution);
+                    queueCount.countDown();
+                    assertThat(execution.getFlowId(), is("realtime"));
+                });
 
-        Publish task = Publish.builder()
-            .id(RealtimeTriggerTest.class.getSimpleName())
-            .type(Publish.class.getName())
-            .server(Property.ofValue("tcp://localhost:1883"))
-            .clientId(Property.ofValue(IdUtils.create()))
-            .topic(Property.ofValue("test/realtime/trigger"))
-            .serdeType(Property.ofValue(SerdeType.JSON))
-            .retain(Property.ofValue(true))
-            .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V5))
-            .from(
-                Map.of(
-                    "message", messageText,
-                    "notification", triggerText
-                )
-            )
-            .build();
+                String messageText = "hello trigger";
+                String triggerText = "Trigger is completed";
 
-        repositoryLoader.load(
-            Objects.requireNonNull(
-                RealtimeTriggerTest.class.getClassLoader()
-                    .getResource("flows/realtime.yaml")
-            )
-        );
+                Publish task = Publish.builder()
+                    .id(RealtimeTriggerTest.class.getSimpleName())
+                    .type(Publish.class.getName())
+                    .server(Property.ofValue("tcp://localhost:1883"))
+                    .clientId(Property.ofValue(IdUtils.create()))
+                    .topic(Property.ofValue("test/realtime/trigger"))
+                    .serdeType(Property.ofValue(SerdeType.JSON))
+                    .retain(Property.ofValue(true))
+                    .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V5))
+                    .from(
+                        Map.of(
+                            "message", messageText,
+                            "notification", triggerText
+                        )
+                    )
+                    .build();
 
-        task.run(TestsUtils.mockRunContext(runContextFactory, task, ImmutableMap.of()));
+                worker.run();
+                scheduler.run();
 
-        boolean await = queueCount.await(1, TimeUnit.MINUTES);
-        assertThat(await, is(true));
+                repositoryLoader.load(
+                    Objects.requireNonNull(
+                        RealtimeTriggerTest.class.getClassLoader()
+                            .getResource("flows/realtime.yaml")
+                    )
+                );
 
-        Map<String, String> payload = (Map<String, String>) receive.blockLast()
-            .getTrigger()
-            .getVariables()
-            .get("payload");
+                task.run(TestsUtils.mockRunContext(runContextFactory, task, ImmutableMap.of()));
 
-        assertThat(payload.size(), is(2));
+                boolean await = queueCount.await(1, TimeUnit.MINUTES);
+                assertThat(await, is(true));
 
-        assertThat(payload.get("message"), is(messageText));
-        assertThat(payload.get("notification"), is(triggerText));
+                Map<String, String> payload = (Map<String, String>) last.get()
+                    .getTrigger()
+                    .getVariables()
+                    .get("payload");
+
+                assertThat(payload.size(), is(2));
+
+                assertThat(payload.get("message"), is(messageText));
+                assertThat(payload.get("notification"), is(triggerText));
+            }
+        }
     }
 }
