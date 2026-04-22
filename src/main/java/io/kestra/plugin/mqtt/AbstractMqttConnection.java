@@ -1,5 +1,6 @@
 package io.kestra.plugin.mqtt;
 
+import io.kestra.core.models.annotations.PluginProperty;
 import java.time.Duration;
 
 import io.kestra.core.models.property.Property;
@@ -29,8 +30,10 @@ public abstract class AbstractMqttConnection extends Task implements MqttConnect
 
     private Property<String> authMethod;
 
+    @PluginProperty(secret = true)
     private Property<String> username;
 
+    @PluginProperty(secret = true)
     private Property<String> password;
 
     private Property<String> crt;

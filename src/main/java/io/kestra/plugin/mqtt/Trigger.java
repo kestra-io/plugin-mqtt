@@ -1,5 +1,6 @@
 package io.kestra.plugin.mqtt;
 
+import io.kestra.core.models.annotations.PluginProperty;
 import java.time.Duration;
 import java.util.Optional;
 
@@ -73,8 +74,10 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
 
     private Property<String> authMethod;
 
+    @PluginProperty(secret = true)
     private Property<String> username;
 
+    @PluginProperty(secret = true)
     private Property<String> password;
 
     private Property<String> crt;
