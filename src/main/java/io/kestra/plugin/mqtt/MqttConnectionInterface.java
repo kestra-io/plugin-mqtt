@@ -72,13 +72,13 @@ public interface MqttConnectionInterface {
     @Schema(
         title = "The user name to use for the connection."
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     Property<String> getUsername();
 
     @Schema(
         title = "The password to use for the connection."
     )
-    @PluginProperty(group = "connection")
+    @PluginProperty(secret = true, group = "connection")
     Property<String> getPassword();
 
     @Schema(
