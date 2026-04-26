@@ -1,6 +1,5 @@
 package io.kestra.plugin.mqtt;
 
-import io.kestra.core.models.annotations.PluginProperty;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -79,10 +78,8 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
 
     private Property<String> authMethod;
 
-    @PluginProperty(secret = true)
     private Property<String> username;
 
-    @PluginProperty(secret = true)
     private Property<String> password;
 
     private Object topic;
