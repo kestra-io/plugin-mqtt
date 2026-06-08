@@ -1,11 +1,8 @@
 package io.kestra.plugin.mqtt;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URL;
+import java.io.BufferedInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -80,9 +77,10 @@ class SuiteTest {
             .build();
         Subscribe.Output subscribeOutput = subscribe.run(runContext);
 
-        BufferedReader inputStream = new BufferedReader(new InputStreamReader(storageInterface.get(TenantService.MAIN_TENANT, null, subscribeOutput.getUri())));
-        List<Map<String, Object>> result = new ArrayList<>();
-        FileSerde.reader(inputStream, r -> result.add((Map<String, Object>) r));
+        List<Map<String, Object>> result;
+        try (var inputStream = new BufferedInputStream(storageInterface.get(TenantService.MAIN_TENANT, null, subscribeOutput.getUri()), FileSerde.BUFFER_SIZE)) {
+            result = FileSerde.readAll(inputStream, Map.class).map(m -> (Map<String, Object>) m).collectList().block();
+        }
 
         assertThat(result.size(), is(1));
 
