@@ -110,7 +110,7 @@ public class Publish extends AbstractMqttConnection
     private Object from;
 
     @Schema(
-        title = "Whether or not the publish message should be retained by the messaging engine.",
+        title = "Whether or not the publish message should be retained by the messaging engine",
         description = "Sending a message with retained set to true and with an empty byte array as the payload (e.g., `null`) "
             + "will clear the retained message from the server."
     )
