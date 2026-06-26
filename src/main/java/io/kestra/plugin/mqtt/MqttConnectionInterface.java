@@ -25,7 +25,7 @@ public interface MqttConnectionInterface {
     Property<String> getServer();
 
     @Schema(
-        title = "The MQTT version to use."
+        title = "The MQTT version to use"
     )
     @NotNull
     Property<AbstractMqttConnection.Version> getMqttVersion();
@@ -45,7 +45,7 @@ public interface MqttConnectionInterface {
     Property<String> getClientId();
 
     @Schema(
-        title = "The connection timeout.",
+        title = "The connection timeout",
         description = "This value defines the maximum time interval the client will wait for the network connection to " +
             "the MQTT server to be established. The default timeout is 30 seconds. A value of 0 disables timeout " +
             "processing meaning the client will wait until the network connection is made successfully or fails."
@@ -54,14 +54,14 @@ public interface MqttConnectionInterface {
     Property<Duration> getConnectionTimeout();
 
     @Schema(
-        title = "Disable ssl verification.",
+        title = "Disable ssl verification",
         description = "This value will allow all ca certificate."
     )
     @PluginProperty(group = "advanced")
     Property<Boolean> getHttpsHostnameVerificationEnabled();
 
     @Schema(
-        title = "The Authentication Method.",
+        title = "The Authentication Method",
         description = "Only available if `version` = `V5`\n" +
             "If set, this value contains the name of the authentication method to be used for extended " +
             "authentication. If null, extended authentication is not performed."
@@ -70,19 +70,19 @@ public interface MqttConnectionInterface {
     Property<String> getAuthMethod();
 
     @Schema(
-        title = "The user name to use for the connection."
+        title = "The user name to use for the connection"
     )
     @PluginProperty(secret = true, group = "connection")
     Property<String> getUsername();
 
     @Schema(
-        title = "The password to use for the connection."
+        title = "The password to use for the connection"
     )
     @PluginProperty(secret = true, group = "connection")
     Property<String> getPassword();
 
     @Schema(
-        title = "CA certificate for TLS connections.",
+        title = "CA certificate for TLS connections",
         description = """
             The CA certificate used to verify the MQTT broker's server certificate when connecting over TLS (`ssl://`).
             Accepts one of the following formats:

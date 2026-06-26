@@ -14,6 +14,7 @@ import io.kestra.core.models.triggers.*;
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.services.SerdeType;
 
+import io.kestra.core.models.annotations.PluginProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -61,22 +62,32 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
 
     @Builder.Default
     @NotNull
+    @Schema(title = "The MQTT version to use")
     private Property<AbstractMqttConnection.Version> mqttVersion = Property.ofValue(AbstractMqttConnection.Version.V5);
 
+    @Schema(title = "The address of the server to connect to, specified as a URI")
     private Property<String> server;
 
+    @Schema(title = "A client identifier that is unique on the server being connected to")
     private Property<String> clientId;
 
+    @Schema(title = "The connection timeout")
     private Property<Duration> connectionTimeout;
 
+    @Schema(title = "Disable ssl verification")
     private Property<Boolean> httpsHostnameVerificationEnabled;
 
+    @Schema(title = "The Authentication Method")
     private Property<String> authMethod;
 
+    @Schema(title = "The user name to use for the connection")
     private Property<String> username;
 
+    @Schema(title = "The password to use for the connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> password;
 
+    @Schema(title = "CA certificate for TLS connections")
     private Property<String> crt;
 
     private Object topic;

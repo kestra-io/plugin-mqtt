@@ -20,6 +20,7 @@ import io.kestra.plugin.mqtt.services.MqttFactory;
 import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
 
+import io.kestra.core.models.annotations.PluginProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -66,24 +67,34 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
 
     @Builder.Default
     @NotNull
+    @Schema(title = "The MQTT version to use")
     private Property<AbstractMqttConnection.Version> mqttVersion = Property.ofValue(AbstractMqttConnection.Version.V5);
 
+    @Schema(title = "The address of the server to connect to, specified as a URI")
     private Property<String> server;
 
+    @Schema(title = "A client identifier that is unique on the server being connected to")
     private Property<String> clientId;
 
+    @Schema(title = "The connection timeout")
     private Property<Duration> connectionTimeout;
 
+    @Schema(title = "Disable ssl verification")
     private Property<Boolean> httpsHostnameVerificationEnabled;
 
+    @Schema(title = "The Authentication Method")
     private Property<String> authMethod;
 
+    @Schema(title = "The user name to use for the connection")
     private Property<String> username;
 
+    @Schema(title = "The password to use for the connection")
+    @PluginProperty(secret = true, group = "connection")
     private Property<String> password;
 
     private Object topic;
 
+    @Schema(title = "CA certificate for TLS connections")
     private Property<String> crt;
 
     @Builder.Default
@@ -215,16 +226,22 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
     @AllArgsConstructor
     public class Output implements io.kestra.core.models.tasks.Output {
 
+        @Schema(title = "The message identifier")
         private Integer id;
 
+        @Schema(title = "The topic the message was received on")
         private String topic;
 
+        @Schema(title = "The quality of service level of the message")
         private Integer qos;
 
+        @Schema(title = "The MQTT message properties")
         private List<Byte> properties;
 
+        @Schema(title = "The message payload")
         private Object payload;
 
+        @Schema(title = "Whether the message was retained by the broker")
         private Boolean retain;
 
         public Output(Message message) {
