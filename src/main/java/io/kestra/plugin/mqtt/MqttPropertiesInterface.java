@@ -16,7 +16,7 @@ public interface MqttPropertiesInterface {
     Property<SerdeType> getSerdeType();
 
     @Schema(
-        title = "Sets the quality of service for this message.",
+        title = "Sets the quality of service for this message",
         description = "* **Quality of Service 0**: indicates that a message should be delivered at most once " +
             "(zero or one times). The message will not be persisted to disk, and will not be acknowledged across " +
             "the network. This QoS is the fastest, but should only be used for messages which are not valuable - " +
