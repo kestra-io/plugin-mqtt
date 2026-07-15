@@ -1,24 +1,22 @@
 package io.kestra.plugin.mqtt;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
 import io.kestra.core.junit.annotations.KestraTest;
-import io.kestra.core.models.executions.Execution;
 import io.kestra.core.models.property.Property;
-import io.kestra.core.queues.DispatchQueueInterface;
 import io.kestra.core.repositories.LocalFlowRepositoryLoader;
 import io.kestra.core.runners.RunContextFactory;
+import io.kestra.core.runners.TestRunnerUtils;
 import io.kestra.core.utils.IdUtils;
 import io.kestra.plugin.mqtt.services.SerdeType;
 
 import jakarta.inject.Inject;
 
+import static io.kestra.core.tenant.TenantService.MAIN_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
@@ -28,7 +26,7 @@ class RealtimeTriggerTest {
     private RunContextFactory runContextFactory;
 
     @Inject
-    private DispatchQueueInterface<Execution> executionQueue;
+    private TestRunnerUtils runnerUtils;
 
     @Inject
     protected LocalFlowRepositoryLoader repositoryLoader;
@@ -36,15 +34,6 @@ class RealtimeTriggerTest {
     @SuppressWarnings("unchecked")
     @Test
     void flow() throws Exception {
-        var queueCount = new CountDownLatch(1);
-        var last = new AtomicReference<Execution>();
-
-        executionQueue.addListener(execution -> {
-            last.set(execution);
-            queueCount.countDown();
-            assertThat(execution.getFlowId(), is("realtime"));
-        });
-
         repositoryLoader.load(
             Objects.requireNonNull(
                 RealtimeTriggerTest.class.getClassLoader().getResource("flows/realtime.yaml")
@@ -69,9 +58,12 @@ class RealtimeTriggerTest {
             .build();
 
         task.run(runContextFactory.of(Map.of()));
-        assertThat(queueCount.await(1, TimeUnit.MINUTES), is(true));
 
-        var payload = (Map<String, String>) last.get().getTrigger().getVariables().get("payload");
+        var last = runnerUtils.awaitFlowExecution(MAIN_TENANT, "io.kestra.tests", "realtime", Duration.ofMinutes(1));
+
+        assertThat(last.getFlowId(), is("realtime"));
+
+        var payload = (Map<String, String>) last.getTrigger().getVariables().get("payload");
         assertThat(payload.size(), is(2));
         assertThat(payload.get("message"), is("hello trigger"));
         assertThat(payload.get("notification"), is("Trigger is completed"));
