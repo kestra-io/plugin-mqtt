@@ -244,6 +244,12 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
         @Schema(title = "Whether the message was retained by the broker")
         private Boolean retain;
 
+        @Schema(title = "The MQTT 5 response topic the sender asked replies to be published to", description = "Null for MQTT 3.1.1 and for a message sent without the property.")
+        private String responseTopic;
+
+        @Schema(title = "The MQTT 5 correlation data, Base64-encoded", description = "Echo it back on the reply so the sender can match it to its request. Null for MQTT 3.1.1 and for a message sent without the property.")
+        private String correlationData;
+
         public Output(Message message) {
             this.id = message.getId();
             this.topic = message.getTopic();
@@ -251,6 +257,8 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
             this.properties = message.getProperties();
             this.payload = message.getPayload();
             this.retain = message.getRetain();
+            this.responseTopic = message.getResponseTopic();
+            this.correlationData = message.getCorrelationData();
         }
     }
 }

@@ -14,4 +14,6 @@ public class Message {
     List<Byte> properties;
     Object payload;
     Boolean retain;
+    String responseTopic;
+    String correlationData;
 }
