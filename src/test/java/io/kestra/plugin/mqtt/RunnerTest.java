@@ -15,7 +15,7 @@ class RunnerTest {
     @Test
     @ExecuteFlow("sanity-checks/all_mqtt.yaml")
     void all_mqtt(Execution execution) {
-        assertThat(execution.getTaskRunList(), hasSize(11));
+        assertThat(execution.getTaskRunList(), hasSize(13));
         assertThat(execution.getState().getCurrent(), is(State.Type.SUCCESS));
     }
 }

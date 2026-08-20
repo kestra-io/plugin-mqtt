@@ -1,5 +1,7 @@
 package io.kestra.plugin.mqtt;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -48,6 +50,8 @@ class RealtimeTriggerTest {
 
         String messageText = "hello trigger";
         String triggerText = "Trigger is completed";
+        String responseTopic = "test/realtime/reply";
+        String correlationData = Base64.getEncoder().encodeToString("realtime-correlation".getBytes(StandardCharsets.UTF_8));
 
         Publish task = Publish.builder()
             .id(RealtimeTriggerTest.class.getSimpleName())
@@ -58,6 +62,8 @@ class RealtimeTriggerTest {
             .serdeType(Property.ofValue(SerdeType.JSON))
             .retain(Property.ofValue(true))
             .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V5))
+            .responseTopic(Property.ofValue(responseTopic))
+            .correlationData(Property.ofValue(correlationData))
             .from(
                 Map.of(
                     "message", messageText,
@@ -78,14 +84,19 @@ class RealtimeTriggerTest {
         boolean await = queueCount.await(1, TimeUnit.MINUTES);
         assertThat(await, is(true));
 
-        Map<String, String> payload = (Map<String, String>) receive.blockLast()
+        Map<String, Object> variables = receive.blockLast()
             .getTrigger()
-            .getVariables()
-            .get("payload");
+            .getVariables();
+
+        Map<String, String> payload = (Map<String, String>) variables.get("payload");
 
         assertThat(payload.size(), is(2));
 
         assertThat(payload.get("message"), is(messageText));
         assertThat(payload.get("notification"), is(triggerText));
+
+        // the trigger's Output is a hand-written mirror of Message, so these two assert the copy
+        assertThat(variables.get("responseTopic"), is(responseTopic));
+        assertThat(variables.get("correlationData"), is(correlationData));
     }
 }

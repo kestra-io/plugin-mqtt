@@ -2,6 +2,7 @@ package io.kestra.plugin.mqtt.services;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -75,6 +76,26 @@ public class MqttV5Service implements MqttInterface {
         mqttMessage.setRetained(runContext.render(publish.getRetain()).as(Boolean.class).orElseThrow());
         mqttMessage.setQos(runContext.render(publish.getQos()).as(Integer.class).orElseThrow());
 
+        String responseTopic = publish.getResponseTopic() == null ? null :
+            runContext.render(publish.getResponseTopic()).as(String.class).orElse(null);
+
+        String correlationData = publish.getCorrelationData() == null ? null :
+            runContext.render(publish.getCorrelationData()).as(String.class).orElse(null);
+
+        if (responseTopic != null || correlationData != null) {
+            MqttProperties properties = new MqttProperties();
+
+            if (responseTopic != null) {
+                properties.setResponseTopic(responseTopic);
+            }
+
+            if (correlationData != null) {
+                properties.setCorrelationData(decodeCorrelationData(correlationData));
+            }
+
+            mqttMessage.setProperties(properties);
+        }
+
         try {
             IMqttToken token = client.publish(runContext.render(publish.getTopic()).as(String.class).orElseThrow(), mqttMessage);
             token.waitForCompletion();
@@ -107,6 +128,8 @@ public class MqttV5Service implements MqttInterface {
                         .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
                         .retain(message.isRetained())
                         .properties(message.getProperties().getValidProperties())
+                        .responseTopic(message.getProperties().getResponseTopic())
+                        .correlationData(encodeCorrelationData(message.getProperties().getCorrelationData()))
                         .build()
                 );
             } catch (Exception e) {
@@ -119,6 +142,26 @@ public class MqttV5Service implements MqttInterface {
                 throw e;
             }
         }, props);
+    }
+
+    /**
+     * Correlation data is binary on the wire, and a byte array is unusable in a flow expression, so
+     * it is surfaced as Base64. {@link MqttV5Service#decodeCorrelationData(String)} is its inverse,
+     * which is what lets a responder echo the value it received unchanged.
+     */
+    private static String encodeCorrelationData(byte[] correlationData) {
+        return correlationData == null ? null : Base64.getEncoder().encodeToString(correlationData);
+    }
+
+    private static byte[] decodeCorrelationData(String correlationData) {
+        try {
+            return Base64.getDecoder().decode(correlationData);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                "The 'correlationData' property must be Base64-encoded, as it is binary on the wire: " + e.getMessage(),
+                e
+            );
+        }
     }
 
     @Override

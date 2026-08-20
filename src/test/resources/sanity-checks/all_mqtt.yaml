@@ -64,6 +64,29 @@ tasks:
     maxRecords: 2
     maxDuration: PT5S
 
+  - id: publish_request
+    type: io.kestra.plugin.mqtt.Publish
+    server: "tcp://localhost:{{ outputs.init.values.port }}"
+    clientId: "mqtt-request-pub-{{ execution.id }}"
+    topic: "sanity/{{ execution.id }}/request"
+    responseTopic: "sanity/{{ execution.id }}/reply"
+    correlationData: c2FuaXR5LWNvcnJlbGF0aW9u
+    serdeType: JSON
+    mqttVersion: V5
+    retain: true
+    from:
+      question: cpu
+
+  - id: subscribe_request
+    type: io.kestra.plugin.mqtt.Subscribe
+    server: "tcp://localhost:{{ outputs.init.values.port }}"
+    clientId: "mqtt-request-sub-{{ execution.id }}"
+    topic: "sanity/{{ execution.id }}/request"
+    serdeType: JSON
+    mqttVersion: V5
+    maxRecords: 1
+    maxDuration: PT5S
+
   - id: publish_string
     type: io.kestra.plugin.mqtt.Publish
     server: "tcp://localhost:{{ outputs.init.values.port }}"
@@ -94,6 +117,10 @@ tasks:
       - "{{ fromIon(read(outputs.subscribe_json.uri), allRows=true)[0].payload.sensor == 'cpu' or fromIon(read(outputs.subscribe_json.uri), allRows=true)[0].payload.sensor == 'mem' }}"
       - "{{ fromIon(read(outputs.subscribe_json.uri), allRows=true)[1].payload.sensor == 'cpu' or fromIon(read(outputs.subscribe_json.uri), allRows=true)[1].payload.sensor == 'mem' }}"
       - "{{ fromIon(read(outputs.subscribe_json.uri), allRows=true)[0].payload.value + fromIon(read(outputs.subscribe_json.uri), allRows=true)[1].payload.value == 1.46 }}"
+      - "{{ outputs.publish_request.messagesCount == 1 }}"
+      - "{{ outputs.subscribe_request.messagesCount == 1 }}"
+      - "{{ fromIon(read(outputs.subscribe_request.uri), allRows=true)[0].responseTopic == 'sanity/' ~ execution.id ~ '/reply' }}"
+      - "{{ fromIon(read(outputs.subscribe_request.uri), allRows=true)[0].correlationData == 'c2FuaXR5LWNvcnJlbGF0aW9u' }}"
       - "{{ outputs.publish_string.messagesCount == 1 }}"
       - "{{ outputs.subscribe_string.messagesCount == 1 }}"
       - "{{ fromIon(read(outputs.subscribe_string.uri), allRows=true)[0].payload == 'mqtt-string-payload' }}"

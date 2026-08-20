@@ -88,6 +88,52 @@ import io.kestra.core.models.annotations.PluginProperty;
                       type: "sensors"
                       value: 1.23
                 """
+        ),
+        @Example(
+            title = "Send an MQTT 5 request, asking for the reply on a topic of its own",
+            full = true,
+            code = """
+                id: mqtt_request
+                namespace: company.team
+
+                tasks:
+                  - id: request
+                    type: io.kestra.plugin.mqtt.Publish
+                    server: tcp://localhost:1883
+                    clientId: kestraRequester
+                    topic: kestra/requests
+                    responseTopic: kestra/replies/{{ execution.id }}
+                    correlationData: "{{ execution.id | base64encode }}"
+                    serdeType: JSON
+                    from:
+                      question: "what is the cpu load?"
+                """
+        ),
+        @Example(
+            title = "Reply to an MQTT 5 request, echoing its correlation data",
+            full = true,
+            code = """
+                id: mqtt_reply
+                namespace: company.team
+
+                triggers:
+                  - id: request
+                    type: io.kestra.plugin.mqtt.RealtimeTrigger
+                    server: tcp://localhost:1883
+                    topic: kestra/requests
+                    serdeType: JSON
+
+                tasks:
+                  - id: reply
+                    type: io.kestra.plugin.mqtt.Publish
+                    server: tcp://localhost:1883
+                    clientId: kestraResponder
+                    topic: "{{ trigger.responseTopic }}"
+                    correlationData: "{{ trigger.correlationData }}"
+                    serdeType: JSON
+                    from:
+                      answer: "{{ trigger.payload.question }}"
+                """
         )
     }
 )
@@ -118,6 +164,27 @@ public class Publish extends AbstractMqttConnection
     @Builder.Default
     @PluginProperty(group = "advanced")
     private Property<Boolean> retain = Property.ofValue(false);
+
+    @Schema(
+        title = "MQTT 5 response topic",
+        description = """
+            The topic a responder is expected to publish its reply to, sent as the MQTT 5 `Response Topic` \
+            message property. Ignored for MQTT 3.1.1, which has no message properties."""
+    )
+    @PluginProperty(group = "advanced")
+    private Property<String> responseTopic;
+
+    @Schema(
+        title = "MQTT 5 correlation data, Base64-encoded",
+        description = """
+            Opaque data a responder echoes back so a reply can be matched to its request, sent as the MQTT 5 \
+            `Correlation Data` message property. Correlation data is binary on the wire, so this property is \
+            **Base64-encoded** — use `{{ 'my-id' | base64encode }}` for a text value — and `Subscribe`, \
+            `Trigger` and `RealtimeTrigger` surface it in the same encoding, so a received value can be echoed \
+            back unchanged. Ignored for MQTT 3.1.1, which has no message properties."""
+    )
+    @PluginProperty(group = "advanced")
+    private Property<String> correlationData;
 
     @PluginProperty(group = "main")
     private Property<SerdeType> serdeType;
