@@ -167,19 +167,21 @@ public class Publish extends AbstractMqttConnection
 
     @Schema(
         title = "MQTT 5 response topic",
-        description = "The topic a responder is expected to publish its reply to, sent as the MQTT 5 "
-            + "`Response Topic` message property. Ignored for MQTT 3.1.1, which has no message properties."
+        description = """
+            The topic a responder is expected to publish its reply to, sent as the MQTT 5 `Response Topic` \
+            message property. Ignored for MQTT 3.1.1, which has no message properties."""
     )
     @PluginProperty(group = "advanced")
     private Property<String> responseTopic;
 
     @Schema(
         title = "MQTT 5 correlation data, Base64-encoded",
-        description = "Opaque data a responder echoes back so a reply can be matched to its request, sent as "
-            + "the MQTT 5 `Correlation Data` message property. Correlation data is binary on the wire, so this "
-            + "property is **Base64-encoded** — use `{{ 'my-id' | base64encode }}` for a text value — and "
-            + "`Subscribe`, `Trigger` and `RealtimeTrigger` surface it in the same encoding, so a received value "
-            + "can be echoed back unchanged. Ignored for MQTT 3.1.1, which has no message properties."
+        description = """
+            Opaque data a responder echoes back so a reply can be matched to its request, sent as the MQTT 5 \
+            `Correlation Data` message property. Correlation data is binary on the wire, so this property is \
+            **Base64-encoded** — use `{{ 'my-id' | base64encode }}` for a text value — and `Subscribe`, \
+            `Trigger` and `RealtimeTrigger` surface it in the same encoding, so a received value can be echoed \
+            back unchanged. Ignored for MQTT 3.1.1, which has no message properties."""
     )
     @PluginProperty(group = "advanced")
     private Property<String> correlationData;

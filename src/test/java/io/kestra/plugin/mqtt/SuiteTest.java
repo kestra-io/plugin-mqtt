@@ -135,6 +135,39 @@ class SuiteTest {
     }
 
     @Test
+    void v5ShouldRoundTripResponseTopicWithoutCorrelationData() throws Exception {
+        RunContext runContext = runContextFactory.of(ImmutableMap.of());
+        String topic = "test/" + IdUtils.create();
+
+        Publish.Output publishOutput = publish(AbstractMqttConnection.Version.V5, topic, topic + "/reply", null)
+            .run(runContext);
+
+        assertThat(publishOutput.getMessagesCount(), is(1));
+
+        Map<String, Object> message = firstMessage(runContext, AbstractMqttConnection.Version.V5, topic);
+
+        assertThat(message.get("responseTopic"), is(topic + "/reply"));
+        assertThat(message.get("correlationData"), is(nullValue()));
+    }
+
+    @Test
+    void v5ShouldRoundTripCorrelationDataWithoutResponseTopic() throws Exception {
+        RunContext runContext = runContextFactory.of(ImmutableMap.of());
+        String topic = "test/" + IdUtils.create();
+        String correlationData = base64("correlation-1");
+
+        Publish.Output publishOutput = publish(AbstractMqttConnection.Version.V5, topic, null, correlationData)
+            .run(runContext);
+
+        assertThat(publishOutput.getMessagesCount(), is(1));
+
+        Map<String, Object> message = firstMessage(runContext, AbstractMqttConnection.Version.V5, topic);
+
+        assertThat(message.get("responseTopic"), is(nullValue()));
+        assertThat(message.get("correlationData"), is(correlationData));
+    }
+
+    @Test
     void v3ShouldIgnoreMessageProperties() throws Exception {
         RunContext runContext = runContextFactory.of(ImmutableMap.of());
         String topic = "test/" + IdUtils.create();
