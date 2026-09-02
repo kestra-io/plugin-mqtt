@@ -4,7 +4,7 @@ Publish and subscribe to MQTT topics from Kestra flows, with support for MQTT v3
 
 ## Common properties
 
-Set `server` to the broker URI (`tcp://` for plain, `ssl://` for TLS) and `clientId` to a unique client identifier. For authenticated brokers, set `username` and `password`. For TLS, set `crt` to the CA certificate (PEM content, a `kestra://` URI, or a file path). Set `mqttVersion` to `V3` or `V5` (default `V5`). Store credentials in [secrets](https://kestra.io/docs/concepts/secret) and apply them globally with [plugin defaults](https://kestra.io/docs/workflow-components/plugin-defaults).
+Set `server` to the broker URI (`tcp://` for plain, `ssl://` for TLS) and `clientId` to a unique client identifier. For authenticated brokers, set `username` and `password`. For TLS, set `crt` to the CA certificate (PEM content, a `kestra://` URI, or a file path). Set `mqttVersion` to `V3` or `V5` (default `V5`). Store credentials in [secrets](https://kestra.io/docs/concepts/secret) and set them on each task.
 
 ## Tasks
 
