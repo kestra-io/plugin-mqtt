@@ -9,9 +9,13 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
+import io.kestra.core.exceptions.KilledException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Metric;
 import io.kestra.core.models.annotations.Plugin;
@@ -110,13 +114,40 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @PluginProperty(group = "execution")
     private Property<Duration> maxDuration;
 
+    // Lifecycle state, not config. Never reset in run(): attempts get a fresh instance, so a reset could only drop a just-delivered kill.
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Builder.Default
+    private final AtomicBoolean isKilled = new AtomicBoolean(false);
+
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Builder.Default
+    private final AtomicBoolean isStopped = new AtomicBoolean(false);
+
+    @Override
+    public void kill() {
+        this.isKilled.set(true);
+    }
+
+    // Keeps the messages already consumed: they are acknowledged on the broker, so a restarted task cannot read them again.
+    @Override
+    public void stop() {
+        this.isStopped.set(true);
+    }
+
     @Override
     public Output run(RunContext runContext) throws Exception {
         long startTime = System.nanoTime();
 
-        MqttInterface connection = MqttFactory.create(runContext, this);
-
         File tempFile = runContext.workingDir().createTempFile(".ion").toFile();
+
+        // Connect last, so nothing between the connection and the try block can leak it.
+        MqttInterface connection = MqttFactory.create(runContext, this);
         Thread thread = null;
 
         try (BufferedOutputStream output = new BufferedOutputStream(new FileOutputStream(tempFile))) {
@@ -135,9 +166,14 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
                 }));
             }));
 
-            while (!this.ended(total, started, runContext)) {
+            while (!this.isKilled.get() && !this.isStopped.get() && !this.ended(total, started, runContext)) {
                 //noinspection BusyWait
                 Thread.sleep(100);
+            }
+
+            if (this.isKilled.get()) {
+                // The worker only maps a task run to KILLED when run() fails: returning here would report the kill as a success.
+                throw new KilledException("MQTT subscription was killed");
             }
 
             connection.unsubscribe(runContext, this);
@@ -158,6 +194,16 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
             if (thread != null) {
                 thread.interrupt();
             }
+
+            closeConnection(runContext, connection);
+        }
+    }
+
+    private static void closeConnection(RunContext runContext, MqttInterface connection) {
+        try {
+            connection.close();
+        } catch (Exception e) {
+            runContext.logger().warn("Failed to close the MQTT connection: {}", e.getMessage());
         }
     }
 
@@ -191,7 +237,8 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @Getter
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "Number of messages consumed"
+            title = "Number of messages consumed",
+            description = "Lower than `maxRecords` when the subscription ended on `maxDuration` or on a graceful worker shutdown."
         )
         private final Integer messagesCount;
 
