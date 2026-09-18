@@ -114,7 +114,15 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @PluginProperty(group = "execution")
     private Property<Duration> maxDuration;
 
-    // Lifecycle state, not config. Never reset in run(): attempts get a fresh instance, so a reset could only drop a just-delivered kill.
+    // Cooperative exit flag, flipped by both hooks. Lifecycle state, not config.
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Builder.Default
+    private final AtomicBoolean isActive = new AtomicBoolean(true);
+
+    // Set by kill() only, so run() can fail rather than return. Never reset in run(): attempts get a fresh instance, so a reset could only drop a just-delivered kill.
     @JsonIgnore
     @Getter(AccessLevel.NONE)
     @EqualsAndHashCode.Exclude
@@ -122,22 +130,16 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
     @Builder.Default
     private final AtomicBoolean isKilled = new AtomicBoolean(false);
 
-    @JsonIgnore
-    @Getter(AccessLevel.NONE)
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    @Builder.Default
-    private final AtomicBoolean isStopped = new AtomicBoolean(false);
-
     @Override
     public void kill() {
         this.isKilled.set(true);
+        this.isActive.set(false);
     }
 
     // Keeps the messages already consumed: they are acknowledged on the broker, so a restarted task cannot read them again.
     @Override
     public void stop() {
-        this.isStopped.set(true);
+        this.isActive.set(false);
     }
 
     @Override
@@ -166,7 +168,7 @@ public class Subscribe extends AbstractMqttConnection implements RunnableTask<Su
                 }));
             }));
 
-            while (!this.isKilled.get() && !this.isStopped.get() && !this.ended(total, started, runContext)) {
+            while (this.isActive.get() && !this.ended(total, started, runContext)) {
                 //noinspection BusyWait
                 Thread.sleep(100);
             }
