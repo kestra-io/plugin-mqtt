@@ -4,14 +4,18 @@ import java.io.BufferedInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
 
+import io.kestra.core.exceptions.KilledException;
 import io.kestra.core.junit.annotations.KestraTest;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.runners.RunContext;
@@ -28,6 +32,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 @KestraTest
 class SuiteTest {
@@ -191,6 +196,49 @@ class SuiteTest {
         Publish publish = publish(AbstractMqttConnection.Version.V5, topic, null, "not base64!");
 
         assertThrows(IllegalArgumentException.class, () -> publish.run(runContext));
+    }
+
+    @Test
+    void killShouldEndTheSubscriptionWithAKilledException() {
+        var runContext = runContextFactory.of(ImmutableMap.of());
+
+        // Neither maxRecords nor maxDuration: without the kill the subscription loop never ends.
+        var subscribe = unboundedSubscribe("test/" + IdUtils.create());
+        subscribe.kill();
+
+        var exception = assertThrows(KilledException.class, () -> subscribe.run(runContext));
+
+        assertThat(exception.getMessage(), is("MQTT subscription was killed"));
+    }
+
+    @Test
+    void stopShouldEndTheSubscriptionAndKeepTheMessagesAlreadyConsumed() throws Exception {
+        var runContext = runContextFactory.of(ImmutableMap.of());
+        var topic = "test/" + IdUtils.create();
+
+        // Retained, so the subscription receives it as soon as it is established.
+        publish(AbstractMqttConnection.Version.V5, topic, null, null).run(runContext);
+
+        var subscribe = unboundedSubscribe(topic);
+
+        var output = assertTimeoutPreemptively(Duration.ofSeconds(30), () ->
+        {
+            CompletableFuture.runAsync(subscribe::stop, CompletableFuture.delayedExecutor(3, TimeUnit.SECONDS));
+
+            return subscribe.run(runContext);
+        });
+
+        assertThat(output.getMessagesCount(), is(1));
+    }
+
+    private Subscribe unboundedSubscribe(String topic) {
+        return Subscribe.builder()
+            .server(Property.ofValue("tcp://127.0.0.1:1883"))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(topic)
+            .serdeType(Property.ofValue(SerdeType.JSON))
+            .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V5))
+            .build();
     }
 
     private Publish publish(AbstractMqttConnection.Version version, String topic, String responseTopic, String correlationData) {
