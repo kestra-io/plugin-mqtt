@@ -2,9 +2,14 @@ package io.kestra.plugin.mqtt;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import io.kestra.core.exceptions.KilledException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
@@ -102,6 +107,46 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
 
     private Property<Duration> maxDuration;
 
+    // Cooperative signal for a kill() delivered before evaluate() has stored the in-flight Subscribe in currentTask; checked right after building it, then reset for the next poll.
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Builder.Default
+    private final AtomicBoolean isKilled = new AtomicBoolean(false);
+
+    // Cooperative signal for a stop() delivered before evaluate() has stored the in-flight Subscribe in currentTask; checked right after building it, then reset for the next poll.
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Builder.Default
+    private final AtomicBoolean isActive = new AtomicBoolean(true);
+
+    // The Subscribe task currently blocking inside evaluate(), so kill()/stop() called from another thread can unblock it.
+    @JsonIgnore
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Builder.Default
+    private final AtomicReference<Subscribe> currentTask = new AtomicReference<>();
+
+    @Override
+    public void kill() {
+        if (this.isKilled.compareAndSet(false, true)) {
+            this.isActive.set(false);
+
+            Optional.ofNullable(this.currentTask.get()).ifPresent(Subscribe::kill);
+        }
+    }
+
+    @Override
+    public void stop() {
+        this.isActive.set(false);
+
+        Optional.ofNullable(this.currentTask.get()).ifPresent(Subscribe::stop);
+    }
+
     @Override
     public Optional<Execution> evaluate(ConditionContext conditionContext, TriggerContext context) throws Exception {
         RunContext runContext = conditionContext.getRunContext();
@@ -126,7 +171,27 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
             .maxRecords(this.maxRecords)
             .maxDuration(this.maxDuration)
             .build();
-        Subscribe.Output run = task.run(runContext);
+
+        this.currentTask.set(task);
+
+        // A kill()/stop() delivered in the narrow window before the line above would otherwise be lost, leaving the worker blocked in task.run().
+        // Mirror the outcome task.run() would itself produce, without paying for a broker connect/subscribe that a dead task would immediately tear down.
+        if (this.isKilled.get()) {
+            this.currentTask.set(null);
+            throw new KilledException("MQTT subscription was killed");
+        } else if (!this.isActive.get()) {
+            this.currentTask.set(null);
+            return Optional.empty();
+        }
+
+        Subscribe.Output run;
+        try {
+            run = task.run(runContext);
+        } finally {
+            // Never reset isKilled/isActive here: a kill()/stop() landing between task.run() returning and this finally
+            // running would otherwise be discarded, leaving the trigger looking alive for the next poll.
+            this.currentTask.set(null);
+        }
 
         if (logger.isDebugEnabled()) {
             logger.debug("Found '{}' messages from '{}'", run.getMessagesCount(), task.topics(runContext));
