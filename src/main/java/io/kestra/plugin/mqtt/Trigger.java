@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import io.kestra.core.exceptions.KilledException;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
 import io.kestra.core.models.conditions.ConditionContext;
@@ -174,19 +175,22 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
         this.currentTask.set(task);
 
         // A kill()/stop() delivered in the narrow window before the line above would otherwise be lost, leaving the worker blocked in task.run().
+        // Mirror the outcome task.run() would itself produce, without paying for a broker connect/subscribe that a dead task would immediately tear down.
         if (this.isKilled.get()) {
-            task.kill();
+            this.currentTask.set(null);
+            throw new KilledException("MQTT subscription was killed");
         } else if (!this.isActive.get()) {
-            task.stop();
+            this.currentTask.set(null);
+            return Optional.empty();
         }
 
         Subscribe.Output run;
         try {
             run = task.run(runContext);
         } finally {
+            // Never reset isKilled/isActive here: a kill()/stop() landing between task.run() returning and this finally
+            // running would otherwise be discarded, leaving the trigger looking alive for the next poll.
             this.currentTask.set(null);
-            this.isKilled.set(false);
-            this.isActive.set(true);
         }
 
         if (logger.isDebugEnabled()) {
