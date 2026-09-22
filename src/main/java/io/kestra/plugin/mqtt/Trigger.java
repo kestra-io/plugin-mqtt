@@ -132,10 +132,11 @@ public class Trigger extends AbstractTrigger implements PollingTriggerInterface,
 
     @Override
     public void kill() {
-        this.isKilled.set(true);
-        this.isActive.set(false);
+        if (this.isKilled.compareAndSet(false, true)) {
+            this.isActive.set(false);
 
-        Optional.ofNullable(this.currentTask.get()).ifPresent(Subscribe::kill);
+            Optional.ofNullable(this.currentTask.get()).ifPresent(Subscribe::kill);
+        }
     }
 
     @Override
