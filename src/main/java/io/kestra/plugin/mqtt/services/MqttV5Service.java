@@ -25,6 +25,7 @@ import io.kestra.plugin.mqtt.Subscribe;
 
 public class MqttV5Service implements MqttInterface {
     MqttAsyncClient client;
+    private final MqttCallbackTracker callbackTracker = new MqttCallbackTracker();
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection, SSLSocketFactory sslSocketFactory) throws Exception {
@@ -36,6 +37,7 @@ public class MqttV5Service implements MqttInterface {
             );
 
             var connectOptions = new org.eclipse.paho.mqttv5.client.MqttConnectionOptions();
+            client.setManualAcks(true);
 
             if (connection.getConnectionTimeout() != null) {
                 connectOptions.setConnectionTimeout((int) runContext.render(connection.getConnectionTimeout()).as(Duration.class).orElseThrow().toSeconds());
@@ -119,6 +121,10 @@ public class MqttV5Service implements MqttInterface {
 
         client.subscribe(subscriptions, null, null, (topic, message) ->
         {
+            if (!callbackTracker.enter()) {
+                return;
+            }
+
             try {
                 consumer.accept(
                     Message.builder()
@@ -132,6 +138,7 @@ public class MqttV5Service implements MqttInterface {
                         .correlationData(encodeCorrelationData(message.getProperties().getCorrelationData()))
                         .build()
                 );
+                client.messageArrivedComplete(message.getId(), message.getQos());
             } catch (Exception e) {
                 runContext.logger().error(
                     "Cannot process message {id: {}} from topic '{}'. Cause: {}",
@@ -140,6 +147,8 @@ public class MqttV5Service implements MqttInterface {
                     e.getMessage()
                 );
                 throw e;
+            } finally {
+                callbackTracker.exit();
             }
         }, props);
     }
@@ -166,8 +175,13 @@ public class MqttV5Service implements MqttInterface {
 
     @Override
     public void unsubscribe(RunContext runContext, Subscribe subscribe) throws Exception {
-        IMqttToken unsubscribe = client.unsubscribe(subscribe.topics(runContext));
-        unsubscribe.waitForCompletion();
+        callbackTracker.stop();
+        try {
+            IMqttToken unsubscribe = client.unsubscribe(subscribe.topics(runContext));
+            unsubscribe.waitForCompletion();
+        } finally {
+            callbackTracker.await();
+        }
     }
 
     @Override
@@ -208,6 +222,7 @@ public class MqttV5Service implements MqttInterface {
     @Override
     public void close() throws Exception {
         try {
+            callbackTracker.stopAndAwait();
             this.client.disconnect();
             this.client.close();
         } catch (MqttException e) {
