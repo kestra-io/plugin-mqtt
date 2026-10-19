@@ -97,10 +97,26 @@ public class MqttV5Service implements MqttInterface {
         }
 
         try {
-            IMqttToken token = client.publish(runContext.render(publish.getTopic()).as(String.class).orElseThrow(), mqttMessage);
+            String topic = runContext.render(publish.getTopic()).as(String.class).orElseThrow();
+            IMqttToken token = client.publish(topic, mqttMessage);
             token.waitForCompletion();
+            checkPublishReasonCodes(token.getReasonCodes(), topic);
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);
+        }
+    }
+
+    private static void checkPublishReasonCodes(int[] reasonCodes, String topic) {
+        if (reasonCodes == null) {
+            return;
+        }
+
+        for (int reasonCode : reasonCodes) {
+            if (reasonCode >= 0x80) {
+                throw new IllegalStateException(
+                    "MQTT broker rejected publish to topic '%s' with reason code %d (0x%02X)".formatted(topic, reasonCode, reasonCode)
+                );
+            }
         }
     }
 
