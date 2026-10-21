@@ -177,7 +177,7 @@ public class MqttV5Service implements MqttInterface {
     public void unsubscribe(RunContext runContext, Subscribe subscribe) throws Exception {
         callbackTracker.stop();
         try {
-            IMqttToken unsubscribe = client.unsubscribe(subscribe.topics(runContext));
+            var unsubscribe = client.unsubscribe(subscribe.topics(runContext));
             unsubscribe.waitForCompletion();
         } finally {
             callbackTracker.await();

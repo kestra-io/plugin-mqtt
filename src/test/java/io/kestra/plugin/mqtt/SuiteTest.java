@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
@@ -98,6 +99,53 @@ class SuiteTest {
 
         Map<String, Object> value = (Map<String, Object>) result.get(0).get("payload");
         assertThat(value.get("message"), is("applepearbanana"));
+    }
+
+    @Test
+    void v3ShouldStoreEveryDeliveredMessageOfARetainedBurst() throws Exception {
+        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V3);
+    }
+
+    @Test
+    void v5ShouldStoreEveryDeliveredMessageOfARetainedBurst() throws Exception {
+        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V5);
+    }
+
+    private void retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version version) throws Exception {
+        var runContext = runContextFactory.of(ImmutableMap.of());
+        var prefix = "test/" + IdUtils.create();
+
+        for (var i = 0; i < 25; i++) {
+            Publish.builder()
+                .server(Property.ofValue("tcp://127.0.0.1:1883"))
+                .clientId(Property.ofValue(IdUtils.create()))
+                .topic(Property.ofValue(prefix + "/" + i))
+                .serdeType(Property.ofValue(SerdeType.STRING))
+                .retain(Property.ofValue(true))
+                .mqttVersion(Property.ofValue(version))
+                .from(List.of("message-" + i))
+                .build()
+                .run(runContext);
+        }
+
+        var subscribe = Subscribe.builder()
+            .server(Property.ofValue("tcp://127.0.0.1:1883"))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(prefix + "/#")
+            .serdeType(Property.ofValue(SerdeType.STRING))
+            .maxRecords(Property.ofValue(1))
+            .mqttVersion(Property.ofValue(version))
+            .build();
+
+        var subscribeOutput = subscribe.run(runContext);
+
+        var storedLines = new AtomicInteger();
+        try (var inputStream = new BufferedInputStream(storageInterface.get(TenantService.MAIN_TENANT, null, subscribeOutput.getUri()), FileSerde.BUFFER_SIZE)) {
+            FileSerde.read(inputStream, row -> storedLines.incrementAndGet());
+        }
+
+        assertThat(subscribeOutput.getMessagesCount() >= 1, is(true));
+        assertThat(storedLines.get(), is(subscribeOutput.getMessagesCount()));
     }
 
     @Test
