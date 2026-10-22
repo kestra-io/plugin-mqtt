@@ -175,7 +175,21 @@ public class MqttV5Service implements MqttInterface {
         client.setCallback(new MqttCallback() {
             @Override
             public void disconnected(MqttDisconnectResponse disconnectResponse) {
-                handler.accept(disconnectResponse.getException().getCause());
+                MqttException exception = disconnectResponse.getException();
+
+                if (exception != null) {
+                    handler.accept(exception.getCause() != null ? exception.getCause() : exception);
+                    return;
+                }
+
+                // a DISCONNECT sent by the broker (e.g. session taken over) carries a reason code instead of an exception
+                String message = "Disconnected by the broker, reason code " + disconnectResponse.getReturnCode();
+
+                if (disconnectResponse.getReasonString() != null) {
+                    message += ": " + disconnectResponse.getReasonString();
+                }
+
+                handler.accept(new Exception(message));
             }
 
             @Override
