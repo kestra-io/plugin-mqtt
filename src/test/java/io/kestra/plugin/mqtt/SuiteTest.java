@@ -163,6 +163,43 @@ class SuiteTest {
     }
 
     @Test
+    void v3ShouldFailWhenAMessageCannotBeDeserialized() throws Exception {
+        aMessageThatCannotBeDeserializedShouldFailTheTask(AbstractMqttConnection.Version.V3);
+    }
+
+    @Test
+    void v5ShouldFailWhenAMessageCannotBeDeserialized() throws Exception {
+        aMessageThatCannotBeDeserializedShouldFailTheTask(AbstractMqttConnection.Version.V5);
+    }
+
+    private void aMessageThatCannotBeDeserializedShouldFailTheTask(AbstractMqttConnection.Version version) throws Exception {
+        var runContext = runContextFactory.of(ImmutableMap.of());
+        var topic = "test/" + IdUtils.create();
+
+        Publish.builder()
+            .server(Property.ofValue("tcp://127.0.0.1:1883"))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(Property.ofValue(topic))
+            .serdeType(Property.ofValue(SerdeType.STRING))
+            .retain(Property.ofValue(true))
+            .mqttVersion(Property.ofValue(version))
+            .from(List.of("not json {"))
+            .build()
+            .run(runContext);
+
+        var subscribe = Subscribe.builder()
+            .server(Property.ofValue("tcp://127.0.0.1:1883"))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(topic)
+            .serdeType(Property.ofValue(SerdeType.JSON))
+            .maxDuration(Property.ofValue(Duration.ofSeconds(3)))
+            .mqttVersion(Property.ofValue(version))
+            .build();
+
+        assertThrows(Exception.class, () -> subscribe.run(runContext));
+    }
+
+    @Test
     void stringPayloadListShouldPublishMultipleMessages() throws Exception {
         var runContext = runContextFactory.of(Map.of());
 

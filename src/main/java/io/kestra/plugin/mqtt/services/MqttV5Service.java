@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLSocketFactory;
@@ -26,6 +27,7 @@ import io.kestra.plugin.mqtt.Subscribe;
 public class MqttV5Service implements MqttInterface {
     MqttAsyncClient client;
     private final MqttCallbackTracker callbackTracker = new MqttCallbackTracker();
+    private final AtomicReference<Exception> callbackFailure = new AtomicReference<>();
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection, SSLSocketFactory sslSocketFactory) throws Exception {
@@ -138,12 +140,12 @@ public class MqttV5Service implements MqttInterface {
                         .correlationData(encodeCorrelationData(message.getProperties().getCorrelationData()))
                         .build()
                 );
-                // Paho only defers the acknowledgement of QoS 1. For QoS 2 it always answers PUBREC and PUBCOMP itself,
-                // so a second completion here would send an unsolicited PUBCOMP that the broker rejects.
+                // Paho 1.2.5 completes QoS 2 itself; acking it again sends a second PUBCOMP.
                 if (message.getQos() == 1) {
                     client.messageArrivedComplete(message.getId(), message.getQos());
                 }
             } catch (Exception e) {
+                callbackFailure.compareAndSet(null, e);
                 runContext.logger().error(
                     "Cannot process message {id: {}} from topic '{}'. Cause: {}",
                     message.getId(),
@@ -180,15 +182,21 @@ public class MqttV5Service implements MqttInterface {
     @Override
     public void unsubscribe(RunContext runContext, Subscribe subscribe) throws Exception {
         callbackTracker.stop();
+        callbackTracker.await();
+
+        var failure = callbackFailure.get();
+        if (failure != null) {
+            throw failure;
+        }
+        if (!client.isConnected()) {
+            throw new IllegalStateException("The MQTT 5 connection was lost before the subscription ended.");
+        }
+
         try {
-            var unsubscribe = client.unsubscribe(subscribe.topics(runContext));
-            unsubscribe.waitForCompletion();
+            client.unsubscribe(subscribe.topics(runContext)).waitForCompletion();
         } catch (MqttException e) {
-            // Paho can fail the token when its callback thread overlaps the removal of the listener. Admission is
-            // closed and drained below, so the stored output does not depend on the unsubscribe succeeding.
+            // Paho 1.2.5 can fail this token when its callback thread overlaps the listener removal.
             runContext.logger().warn("MQTT 5 unsubscribe did not complete: {}", e.getMessage());
-        } finally {
-            callbackTracker.await();
         }
     }
 
