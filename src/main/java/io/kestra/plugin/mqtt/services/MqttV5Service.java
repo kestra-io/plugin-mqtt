@@ -3,6 +3,7 @@ package io.kestra.plugin.mqtt.services;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -186,7 +187,7 @@ public class MqttV5Service implements MqttInterface {
 
         var failure = callbackFailure.get();
         if (failure != null) {
-            throw failure;
+            throw new IllegalStateException("Cannot process a message received on the subscription; check that serdeType matches the payload: " + failure.getMessage(), failure);
         }
         if (!client.isConnected()) {
             throw new IllegalStateException("The MQTT 5 connection was lost before the subscription ended.");
@@ -195,9 +196,16 @@ public class MqttV5Service implements MqttInterface {
         try {
             client.unsubscribe(subscribe.topics(runContext)).waitForCompletion();
         } catch (MqttException e) {
+            if (!isListenerRace(e)) {
+                throw e;
+            }
             // Paho 1.2.5 can fail this token when its callback thread overlaps the listener removal.
             runContext.logger().warn("MQTT 5 unsubscribe did not complete: {}", e.getMessage());
         }
+    }
+
+    static boolean isListenerRace(MqttException e) {
+        return e.getCause() instanceof NullPointerException || e.getCause() instanceof ConcurrentModificationException;
     }
 
     @Override

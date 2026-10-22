@@ -17,7 +17,7 @@ class MqttCallbackTrackerTest {
         var entered = new CountDownLatch(1);
         var release = new CountDownLatch(1);
 
-        Thread callback = Thread.ofVirtual().start(() -> {
+        var callback = Thread.ofVirtual().start(() -> {
             if (tracker.enter()) {
                 entered.countDown();
                 try {
@@ -34,7 +34,7 @@ class MqttCallbackTrackerTest {
         tracker.stop();
 
         var finished = new CountDownLatch(1);
-        Thread waiting = Thread.ofVirtual().start(() -> {
+        var waiting = Thread.ofVirtual().start(() -> {
             try {
                 tracker.await();
             } catch (InterruptedException e) {
