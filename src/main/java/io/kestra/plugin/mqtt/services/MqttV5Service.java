@@ -138,7 +138,11 @@ public class MqttV5Service implements MqttInterface {
                         .correlationData(encodeCorrelationData(message.getProperties().getCorrelationData()))
                         .build()
                 );
-                client.messageArrivedComplete(message.getId(), message.getQos());
+                // Paho only defers the acknowledgement of QoS 1. For QoS 2 it always answers PUBREC and PUBCOMP itself,
+                // so a second completion here would send an unsolicited PUBCOMP that the broker rejects.
+                if (message.getQos() == 1) {
+                    client.messageArrivedComplete(message.getId(), message.getQos());
+                }
             } catch (Exception e) {
                 runContext.logger().error(
                     "Cannot process message {id: {}} from topic '{}'. Cause: {}",
@@ -179,6 +183,10 @@ public class MqttV5Service implements MqttInterface {
         try {
             var unsubscribe = client.unsubscribe(subscribe.topics(runContext));
             unsubscribe.waitForCompletion();
+        } catch (MqttException e) {
+            // Paho can fail the token when its callback thread overlaps the removal of the listener. Admission is
+            // closed and drained below, so the stored output does not depend on the unsubscribe succeeding.
+            runContext.logger().warn("MQTT 5 unsubscribe did not complete: {}", e.getMessage());
         } finally {
             callbackTracker.await();
         }

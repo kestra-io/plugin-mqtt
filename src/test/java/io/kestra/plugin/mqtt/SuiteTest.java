@@ -103,24 +103,35 @@ class SuiteTest {
 
     @Test
     void v3ShouldStoreEveryDeliveredMessageOfARetainedBurst() throws Exception {
-        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V3);
+        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V3, 1);
+    }
+
+    @Test
+    void v3Qos2ShouldStoreEveryDeliveredMessageOfARetainedBurst() throws Exception {
+        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V3, 2);
     }
 
     @Test
     void v5ShouldStoreEveryDeliveredMessageOfARetainedBurst() throws Exception {
-        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V5);
+        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V5, 1);
     }
 
-    private void retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version version) throws Exception {
+    @Test
+    void v5Qos2ShouldStoreEveryDeliveredMessageOfARetainedBurst() throws Exception {
+        retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version.V5, 2);
+    }
+
+    private void retainedBurstShouldKeepStoredLinesAndCountConsistent(AbstractMqttConnection.Version version, int qos) throws Exception {
         var runContext = runContextFactory.of(ImmutableMap.of());
         var prefix = "test/" + IdUtils.create();
 
-        for (var i = 0; i < 25; i++) {
+        for (var i = 0; i < 40; i++) {
             Publish.builder()
                 .server(Property.ofValue("tcp://127.0.0.1:1883"))
                 .clientId(Property.ofValue(IdUtils.create()))
                 .topic(Property.ofValue(prefix + "/" + i))
                 .serdeType(Property.ofValue(SerdeType.STRING))
+                .qos(Property.ofValue(qos))
                 .retain(Property.ofValue(true))
                 .mqttVersion(Property.ofValue(version))
                 .from(List.of("message-" + i))
@@ -128,24 +139,27 @@ class SuiteTest {
                 .run(runContext);
         }
 
-        var subscribe = Subscribe.builder()
-            .server(Property.ofValue("tcp://127.0.0.1:1883"))
-            .clientId(Property.ofValue(IdUtils.create()))
-            .topic(prefix + "/#")
-            .serdeType(Property.ofValue(SerdeType.STRING))
-            .maxRecords(Property.ofValue(1))
-            .mqttVersion(Property.ofValue(version))
-            .build();
+        for (var round = 0; round < 3; round++) {
+            var subscribe = Subscribe.builder()
+                .server(Property.ofValue("tcp://127.0.0.1:1883"))
+                .clientId(Property.ofValue(IdUtils.create()))
+                .topic(prefix + "/#")
+                .serdeType(Property.ofValue(SerdeType.STRING))
+                .qos(Property.ofValue(qos))
+                .maxRecords(Property.ofValue(1))
+                .mqttVersion(Property.ofValue(version))
+                .build();
 
-        var subscribeOutput = subscribe.run(runContext);
+            var subscribeOutput = subscribe.run(runContext);
 
-        var storedLines = new AtomicInteger();
-        try (var inputStream = new BufferedInputStream(storageInterface.get(TenantService.MAIN_TENANT, null, subscribeOutput.getUri()), FileSerde.BUFFER_SIZE)) {
-            FileSerde.read(inputStream, row -> storedLines.incrementAndGet());
+            var storedLines = new AtomicInteger();
+            try (var inputStream = new BufferedInputStream(storageInterface.get(TenantService.MAIN_TENANT, null, subscribeOutput.getUri()), FileSerde.BUFFER_SIZE)) {
+                FileSerde.read(inputStream, row -> storedLines.incrementAndGet());
+            }
+
+            assertThat(subscribeOutput.getMessagesCount() >= 1, is(true));
+            assertThat(storedLines.get(), is(subscribeOutput.getMessagesCount()));
         }
-
-        assertThat(subscribeOutput.getMessagesCount() >= 1, is(true));
-        assertThat(storedLines.get(), is(subscribeOutput.getMessagesCount()));
     }
 
     @Test
