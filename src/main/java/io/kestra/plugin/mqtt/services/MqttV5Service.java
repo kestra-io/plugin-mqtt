@@ -190,7 +190,7 @@ public class MqttV5Service implements MqttInterface {
             throw new IllegalStateException("Cannot process a message received on the subscription; check that serdeType matches the payload: " + failure.getMessage(), failure);
         }
         if (!client.isConnected()) {
-            throw new IllegalStateException("The MQTT 5 connection was lost before the subscription ended.");
+            throw new IllegalStateException("The MQTT 5 connection was lost before the subscription ended; check that the broker is reachable and the network is stable, then rerun the task.");
         }
 
         try {
