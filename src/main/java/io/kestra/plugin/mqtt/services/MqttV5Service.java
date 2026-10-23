@@ -19,6 +19,7 @@ import org.eclipse.paho.mqttv5.common.MqttException;
 import org.eclipse.paho.mqttv5.common.MqttMessage;
 import org.eclipse.paho.mqttv5.common.MqttSubscription;
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
+import org.eclipse.paho.mqttv5.common.packet.MqttReturnCode;
 
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.AbstractMqttConnection;
@@ -213,7 +214,25 @@ public class MqttV5Service implements MqttInterface {
         client.setCallback(new MqttCallback() {
             @Override
             public void disconnected(MqttDisconnectResponse disconnectResponse) {
-                handler.accept(disconnectResponse.getException().getCause());
+                var exception = disconnectResponse.getException();
+
+                if (exception != null) {
+                    handler.accept(exception.getCause() != null ? exception.getCause() : exception);
+                    return;
+                }
+
+                // a DISCONNECT sent by the broker (e.g. session taken over) carries a reason code instead of an exception
+                var message = "Disconnected by the broker, reason code " + disconnectResponse.getReturnCode();
+
+                if (disconnectResponse.getReasonString() != null) {
+                    message += ": " + disconnectResponse.getReasonString();
+                }
+
+                if (disconnectResponse.getReturnCode() == MqttReturnCode.RETURN_CODE_SESSION_TAKEN_OVER) {
+                    message += " (another client connected with the same clientId; give this trigger a unique clientId)";
+                }
+
+                handler.accept(new IllegalStateException(message));
             }
 
             @Override
