@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -110,12 +109,12 @@ class RealtimeTriggerTest {
 
     @Test
     void v5ShouldFailWhenTheBrokerSendsDisconnect() throws Exception {
-        String topic = "test/realtime/" + IdUtils.create();
-        String clientId = IdUtils.create();
+        var topic = "test/realtime/" + IdUtils.create();
+        var clientId = IdUtils.create();
 
         // Retained, so the trigger's subscription receives it as soon as it is established.
-        Publish publish = Publish.builder()
-            .id(RealtimeTriggerTest.class.getSimpleName())
+        var publish = Publish.builder()
+            .id(IdUtils.create())
             .type(Publish.class.getName())
             .server(Property.ofValue("tcp://127.0.0.1:1883"))
             .clientId(Property.ofValue(IdUtils.create()))
@@ -127,7 +126,7 @@ class RealtimeTriggerTest {
             .build();
         publish.run(runContextFactory.of(Map.of()));
 
-        RealtimeTrigger trigger = RealtimeTrigger.builder()
+        var trigger = RealtimeTrigger.builder()
             .id(IdUtils.create())
             .type(RealtimeTrigger.class.getName())
             .server(Property.ofValue("tcp://127.0.0.1:1883"))
@@ -138,14 +137,14 @@ class RealtimeTriggerTest {
         var mock = TestsUtils.mockTrigger(runContextFactory, trigger);
 
         // The trigger blocks the subscribing thread until it stops, so it is evaluated in the background.
-        CountDownLatch received = new CountDownLatch(1);
-        CompletableFuture<Void> terminated = Flux.from(trigger.evaluate(mock.getKey(), mock.getValue()))
+        var received = new CountDownLatch(1);
+        var terminated = Flux.from(trigger.evaluate(mock.getKey(), mock.getValue()))
             .doOnNext(execution -> received.countDown())
             .subscribeOn(Schedulers.boundedElastic())
             .then()
             .toFuture();
 
-        MqttClient takeover = new MqttClient("tcp://127.0.0.1:1883", clientId, new MemoryPersistence());
+        var takeover = new MqttClient("tcp://127.0.0.1:1883", clientId, new MemoryPersistence());
         try {
             // Once a message is received, the trigger's disconnection handler is registered.
             assertThat(received.await(30, TimeUnit.SECONDS), is(true));
@@ -153,8 +152,9 @@ class RealtimeTriggerTest {
             // Connecting with the same client id takes the session over: the broker sends a DISCONNECT to the trigger.
             takeover.connect();
 
-            ExecutionException exception = assertThrows(ExecutionException.class, () -> terminated.get(30, TimeUnit.SECONDS));
+            var exception = assertThrows(ExecutionException.class, () -> terminated.get(30, TimeUnit.SECONDS));
             assertThat(exception.getCause().getMessage(), containsString("reason code " + MqttReturnCode.RETURN_CODE_SESSION_TAKEN_OVER));
+            assertThat(exception.getCause().getMessage(), containsString("give this trigger a unique clientId"));
         } finally {
             trigger.stop();
             if (takeover.isConnected()) {
