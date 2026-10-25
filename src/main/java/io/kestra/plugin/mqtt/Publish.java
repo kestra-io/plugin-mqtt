@@ -19,7 +19,6 @@ import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.plugin.mqtt.services.MqttFactory;
-import io.kestra.plugin.mqtt.services.MqttInterface;
 import io.kestra.plugin.mqtt.services.SerdeType;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -197,43 +196,46 @@ public class Publish extends AbstractMqttConnection
     public Publish.Output run(RunContext runContext) throws Exception {
         long startTime = System.nanoTime();
 
-        MqttInterface connection = MqttFactory.create(runContext, this);
-
-        String rTopic = runContext.render(this.topic).as(String.class).orElseThrow();
+        var connection = MqttFactory.create(runContext, this);
 
         int count;
-        SerdeType rSerdeType = runContext.render(this.serdeType).as(SerdeType.class).orElseThrow();
+        try {
+            var rTopic = runContext.render(this.topic).as(String.class)
+                .orElseThrow(() -> new IllegalArgumentException("The 'topic' property is required"));
+            var rSerdeType = runContext.render(this.serdeType).as(SerdeType.class)
+                .orElseThrow(() -> new IllegalArgumentException("The 'serdeType' property is required"));
 
-        if (rSerdeType == SerdeType.STRING) {
-            Iterable<?> rows = (from instanceof Iterable<?> iterable) ? iterable : List.of(from);
+            if (rSerdeType == SerdeType.STRING) {
+                var rows = (from instanceof Iterable<?> iterable) ? iterable : List.of(from);
 
-            rows.forEach(throwConsumer(row ->
-            {
-                String value = runContext.render(row.toString());
-                connection.publish(
-                    runContext,
-                    this,
-                    value.getBytes(StandardCharsets.UTF_8)
-                );
-            }));
-
-            count = (rows instanceof Collection<?> c) ? c.size() : 1;
-        } else {
-            count = Data.from(from).read(runContext)
-                .map(throwFunction(row ->
+                rows.forEach(throwConsumer(row ->
                 {
-                    connection.publish(runContext, this, this.serialize(row, runContext));
-                    return 1;
-                }))
-                .reduce(Integer::sum)
-                .blockOptional().orElse(0);
+                    var rValue = runContext.render(row.toString());
+                    connection.publish(
+                        runContext,
+                        this,
+                        rValue.getBytes(StandardCharsets.UTF_8)
+                    );
+                }));
 
+                count = (rows instanceof Collection<?> c) ? c.size() : 1;
+            } else {
+                count = Data.from(from).read(runContext)
+                    .map(throwFunction(row ->
+                    {
+                        connection.publish(runContext, this, this.serialize(row, runContext));
+                        return 1;
+                    }))
+                    .reduce(Integer::sum)
+                    .blockOptional().orElse(0);
+
+            }
+
+            runContext.metric(Counter.of("records", count, "topic", rTopic));
+            runContext.metric(Timer.of("duration", Duration.ofNanos(System.nanoTime() - startTime)));
+        } finally {
+            connection.close();
         }
-
-        runContext.metric(Counter.of("records", count, "topic", rTopic));
-        runContext.metric(Timer.of("duration", Duration.ofNanos(System.nanoTime() - startTime)));
-
-        connection.close();
 
         return Output.builder()
             .messagesCount(count)

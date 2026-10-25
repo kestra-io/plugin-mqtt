@@ -19,6 +19,7 @@ import org.eclipse.paho.mqttv5.common.MqttException;
 import org.eclipse.paho.mqttv5.common.MqttMessage;
 import org.eclipse.paho.mqttv5.common.MqttSubscription;
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
+import org.eclipse.paho.mqttv5.common.packet.MqttReturnCode;
 
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.AbstractMqttConnection;
@@ -102,10 +103,29 @@ public class MqttV5Service implements MqttInterface {
         }
 
         try {
-            IMqttToken token = client.publish(runContext.render(publish.getTopic()).as(String.class).orElseThrow(), mqttMessage);
+            var rTopic = runContext.render(publish.getTopic()).as(String.class)
+                .orElseThrow(() -> new IllegalArgumentException("The 'topic' property is required"));
+            var token = client.publish(rTopic, mqttMessage);
             token.waitForCompletion();
+            checkPublishReasonCodes(token.getReasonCodes(), rTopic);
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);
+        }
+    }
+
+    private static void checkPublishReasonCodes(int[] reasonCodes, String topic) {
+        if (reasonCodes == null) {
+            return;
+        }
+
+        for (var reasonCode : reasonCodes) {
+            if (reasonCode >= MqttReturnCode.RETURN_CODE_UNSPECIFIED_ERROR) {
+                var hint = reasonCode == MqttReturnCode.RETURN_CODE_NOT_AUTHORIZED ? " Check the client's permissions on this topic." : "";
+                throw new IllegalStateException(
+                    "MQTT broker rejected publish to topic '%s' with reason code %d (0x%02X): %s%s"
+                        .formatted(topic, reasonCode, reasonCode, new MqttException(reasonCode).getMessage(), hint)
+                );
+            }
         }
     }
 
@@ -247,7 +267,10 @@ public class MqttV5Service implements MqttInterface {
     public void close() throws Exception {
         try {
             callbackTracker.stopAndAwait();
-            this.client.disconnect();
+            // A dropped connection is already disconnected, and disconnect() would throw over the original error
+            if (this.client.isConnected()) {
+                this.client.disconnect();
+            }
             this.client.close();
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);
