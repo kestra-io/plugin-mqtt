@@ -17,6 +17,7 @@ import org.eclipse.paho.mqttv5.common.MqttException;
 import org.eclipse.paho.mqttv5.common.MqttMessage;
 import org.eclipse.paho.mqttv5.common.MqttSubscription;
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
+import org.eclipse.paho.mqttv5.common.packet.MqttReturnCode;
 
 import io.kestra.core.runners.RunContext;
 import io.kestra.plugin.mqtt.AbstractMqttConnection;
@@ -97,10 +98,11 @@ public class MqttV5Service implements MqttInterface {
         }
 
         try {
-            var topic = runContext.render(publish.getTopic()).as(String.class).orElseThrow();
-            var token = client.publish(topic, mqttMessage);
+            var rTopic = runContext.render(publish.getTopic()).as(String.class)
+                .orElseThrow(() -> new IllegalArgumentException("The 'topic' property is required"));
+            var token = client.publish(rTopic, mqttMessage);
             token.waitForCompletion();
-            checkPublishReasonCodes(token.getReasonCodes(), topic);
+            checkPublishReasonCodes(token.getReasonCodes(), rTopic);
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);
         }
@@ -112,9 +114,10 @@ public class MqttV5Service implements MqttInterface {
         }
 
         for (var reasonCode : reasonCodes) {
-            if (reasonCode >= 0x80) {
+            if (reasonCode >= MqttReturnCode.RETURN_CODE_UNSPECIFIED_ERROR) {
                 throw new IllegalStateException(
-                    "MQTT broker rejected publish to topic '%s' with reason code %d (0x%02X)".formatted(topic, reasonCode, reasonCode)
+                    "MQTT broker rejected publish to topic '%s' with reason code %d (0x%02X): %s Check the client's permissions on this topic."
+                        .formatted(topic, reasonCode, reasonCode, new MqttException(reasonCode).getMessage())
                 );
             }
         }

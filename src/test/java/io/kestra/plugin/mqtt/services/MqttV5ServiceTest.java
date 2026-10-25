@@ -37,13 +37,19 @@ class MqttV5ServiceTest {
         var exception = assertThrows(IllegalStateException.class, () -> service.publish(runContext(), publish(), new byte[0]));
 
         assertThat(exception.getMessage(), containsString("MQTT broker rejected publish to topic 'test/topic'"));
-        assertThat(exception.getMessage(), containsString("135 (0x87)"));
+        assertThat(exception.getMessage(), containsString("135 (0x87): Not authorized."));
     }
 
     @Test
     void shouldAcceptSuccessfulPublishReasonCodes() throws Exception {
         assertDoesNotThrow(() -> serviceWithReasonCode(0x00).publish(runContext(), publish(), new byte[0]));
         assertDoesNotThrow(() -> serviceWithReasonCode(0x10).publish(runContext(), publish(), new byte[0]));
+    }
+
+    // QoS 0 gets no acknowledgement, so the token completes without reason codes.
+    @Test
+    void shouldAcceptPublishWithoutAcknowledgement() throws Exception {
+        assertDoesNotThrow(() -> serviceWithReasonCode().publish(runContext(), publish(), new byte[0]));
     }
 
     private RunContext runContext() {
@@ -61,9 +67,9 @@ class MqttV5ServiceTest {
             .build();
     }
 
-    private MqttV5Service serviceWithReasonCode(int reasonCode) throws MqttException {
+    private MqttV5Service serviceWithReasonCode(int... reasonCodes) throws MqttException {
         var token = new MqttToken();
-        token.internalTok = new CompletedToken(reasonCode);
+        token.internalTok = new CompletedToken(reasonCodes);
 
         var service = new MqttV5Service();
         service.client = new StubClient(token);
@@ -71,9 +77,11 @@ class MqttV5ServiceTest {
     }
 
     private static final class CompletedToken extends Token {
-        private CompletedToken(int reasonCode) {
+        private CompletedToken(int... reasonCodes) {
             super("test");
-            updateReasonCodes(new int[] { reasonCode });
+            if (reasonCodes.length > 0) {
+                updateReasonCodes(reasonCodes);
+            }
             markComplete(null, null);
             notifyComplete();
         }
