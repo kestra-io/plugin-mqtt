@@ -19,6 +19,7 @@ import io.kestra.plugin.mqtt.Subscribe;
 
 public class MqttV3Service implements MqttInterface {
     MqttAsyncClient client;
+    private final MqttCallbackTracker callbackTracker = new MqttCallbackTracker();
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection, SSLSocketFactory sslSocketFactory) throws Exception {
@@ -30,6 +31,7 @@ public class MqttV3Service implements MqttInterface {
             );
 
             var connectOptions = new org.eclipse.paho.client.mqttv3.MqttConnectOptions();
+            client.setManualAcks(true);
 
             if (connection.getConnectionTimeout() != null) {
                 connectOptions.setConnectionTimeout((int) runContext.render(connection.getConnectionTimeout()).as(Duration.class).orElseThrow().toSeconds());
@@ -81,6 +83,10 @@ public class MqttV3Service implements MqttInterface {
 
         IMqttMessageListener messageListener = (topic, message) ->
         {
+            if (!callbackTracker.enter()) {
+                return;
+            }
+
             try {
                 consumer.accept(
                     Message.builder()
@@ -91,6 +97,7 @@ public class MqttV3Service implements MqttInterface {
                         .retain(message.isRetained())
                         .build()
                 );
+                client.messageArrivedComplete(message.getId(), message.getQos());
             } catch (Exception e) {
                 runContext.logger().error(
                     "Cannot process message {id: {}} from topic '{}'. Cause: {}",
@@ -99,6 +106,8 @@ public class MqttV3Service implements MqttInterface {
                     e.getMessage()
                 );
                 throw e;
+            } finally {
+                callbackTracker.exit();
             }
         };
 
@@ -115,8 +124,13 @@ public class MqttV3Service implements MqttInterface {
 
     @Override
     public void unsubscribe(RunContext runContext, Subscribe subscribe) throws Exception {
-        IMqttToken unsubscribe = client.unsubscribe(subscribe.topics(runContext));
-        unsubscribe.waitForCompletion();
+        callbackTracker.stop();
+        try {
+            var unsubscribe = client.unsubscribe(subscribe.topics(runContext));
+            unsubscribe.waitForCompletion();
+        } finally {
+            callbackTracker.await();
+        }
     }
 
     @Override
@@ -142,6 +156,7 @@ public class MqttV3Service implements MqttInterface {
     @Override
     public void close() throws Exception {
         try {
+            callbackTracker.stopAndAwait();
             // A dropped connection is already disconnected, and disconnect() would throw over the original error
             if (this.client.isConnected()) {
                 this.client.disconnect();

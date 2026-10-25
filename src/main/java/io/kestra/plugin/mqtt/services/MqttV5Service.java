@@ -3,7 +3,9 @@ package io.kestra.plugin.mqtt.services;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.ConcurrentModificationException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLSocketFactory;
@@ -26,6 +28,8 @@ import io.kestra.plugin.mqtt.Subscribe;
 
 public class MqttV5Service implements MqttInterface {
     MqttAsyncClient client;
+    private final MqttCallbackTracker callbackTracker = new MqttCallbackTracker();
+    private final AtomicReference<Exception> callbackFailure = new AtomicReference<>();
 
     @Override
     public void connect(RunContext runContext, AbstractMqttConnection connection, SSLSocketFactory sslSocketFactory) throws Exception {
@@ -37,6 +41,7 @@ public class MqttV5Service implements MqttInterface {
             );
 
             var connectOptions = new org.eclipse.paho.mqttv5.client.MqttConnectionOptions();
+            client.setManualAcks(true);
 
             if (connection.getConnectionTimeout() != null) {
                 connectOptions.setConnectionTimeout((int) runContext.render(connection.getConnectionTimeout()).as(Duration.class).orElseThrow().toSeconds());
@@ -139,6 +144,10 @@ public class MqttV5Service implements MqttInterface {
 
         client.subscribe(subscriptions, null, null, (topic, message) ->
         {
+            if (!callbackTracker.enter()) {
+                return;
+            }
+
             try {
                 consumer.accept(
                     Message.builder()
@@ -152,7 +161,12 @@ public class MqttV5Service implements MqttInterface {
                         .correlationData(encodeCorrelationData(message.getProperties().getCorrelationData()))
                         .build()
                 );
+                // Paho 1.2.5 completes QoS 2 itself; acking it again sends a second PUBCOMP.
+                if (message.getQos() == 1) {
+                    client.messageArrivedComplete(message.getId(), message.getQos());
+                }
             } catch (Exception e) {
+                callbackFailure.compareAndSet(null, e);
                 runContext.logger().error(
                     "Cannot process message {id: {}} from topic '{}'. Cause: {}",
                     message.getId(),
@@ -160,6 +174,8 @@ public class MqttV5Service implements MqttInterface {
                     e.getMessage()
                 );
                 throw e;
+            } finally {
+                callbackTracker.exit();
             }
         }, props);
     }
@@ -186,8 +202,30 @@ public class MqttV5Service implements MqttInterface {
 
     @Override
     public void unsubscribe(RunContext runContext, Subscribe subscribe) throws Exception {
-        IMqttToken unsubscribe = client.unsubscribe(subscribe.topics(runContext));
-        unsubscribe.waitForCompletion();
+        callbackTracker.stop();
+        callbackTracker.await();
+
+        var failure = callbackFailure.get();
+        if (failure != null) {
+            throw new IllegalStateException("Cannot process a message received on the subscription; check that serdeType matches the payload: " + failure.getMessage(), failure);
+        }
+        if (!client.isConnected()) {
+            throw new IllegalStateException("The MQTT 5 connection was lost before the subscription ended; check that the broker is reachable and the network is stable, then rerun the task.");
+        }
+
+        try {
+            client.unsubscribe(subscribe.topics(runContext)).waitForCompletion();
+        } catch (MqttException e) {
+            if (!isListenerRace(e)) {
+                throw e;
+            }
+            // Paho 1.2.5 can fail this token when its callback thread overlaps the listener removal.
+            runContext.logger().warn("MQTT 5 unsubscribe did not complete: {}", e.getMessage());
+        }
+    }
+
+    static boolean isListenerRace(MqttException e) {
+        return e.getCause() instanceof NullPointerException || e.getCause() instanceof ConcurrentModificationException;
     }
 
     @Override
@@ -228,6 +266,7 @@ public class MqttV5Service implements MqttInterface {
     @Override
     public void close() throws Exception {
         try {
+            callbackTracker.stopAndAwait();
             // A dropped connection is already disconnected, and disconnect() would throw over the original error
             if (this.client.isConnected()) {
                 this.client.disconnect();
