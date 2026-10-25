@@ -115,9 +115,10 @@ public class MqttV5Service implements MqttInterface {
 
         for (var reasonCode : reasonCodes) {
             if (reasonCode >= MqttReturnCode.RETURN_CODE_UNSPECIFIED_ERROR) {
+                var hint = reasonCode == MqttReturnCode.RETURN_CODE_NOT_AUTHORIZED ? " Check the client's permissions on this topic." : "";
                 throw new IllegalStateException(
-                    "MQTT broker rejected publish to topic '%s' with reason code %d (0x%02X): %s Check the client's permissions on this topic."
-                        .formatted(topic, reasonCode, reasonCode, new MqttException(reasonCode).getMessage())
+                    "MQTT broker rejected publish to topic '%s' with reason code %d (0x%02X): %s%s"
+                        .formatted(topic, reasonCode, reasonCode, new MqttException(reasonCode).getMessage(), hint)
                 );
             }
         }
@@ -227,7 +228,10 @@ public class MqttV5Service implements MqttInterface {
     @Override
     public void close() throws Exception {
         try {
-            this.client.disconnect();
+            // A dropped connection is already disconnected, and disconnect() would throw over the original error
+            if (this.client.isConnected()) {
+                this.client.disconnect();
+            }
             this.client.close();
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);

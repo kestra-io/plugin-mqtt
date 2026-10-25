@@ -142,7 +142,10 @@ public class MqttV3Service implements MqttInterface {
     @Override
     public void close() throws Exception {
         try {
-            this.client.disconnect();
+            // A dropped connection is already disconnected, and disconnect() would throw over the original error
+            if (this.client.isConnected()) {
+                this.client.disconnect();
+            }
             this.client.close();
         } catch (MqttException e) {
             throw new Exception(e.getMessage(), e);

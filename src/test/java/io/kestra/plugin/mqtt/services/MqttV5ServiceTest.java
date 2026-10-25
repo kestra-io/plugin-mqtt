@@ -52,6 +52,15 @@ class MqttV5ServiceTest {
         assertDoesNotThrow(() -> serviceWithReasonCode().publish(runContext(), publish(), new byte[0]));
     }
 
+    // Publish closes in a finally, so closing an already dropped client must not replace the publish error.
+    @Test
+    void shouldCloseQuietlyWhenAlreadyDisconnected() throws Exception {
+        var service = new MqttV5Service();
+        service.client = new MqttAsyncClient("tcp://localhost:1883", "test-client", new MemoryPersistence());
+
+        assertDoesNotThrow(service::close);
+    }
+
     private RunContext runContext() {
         return runContextFactory.of(Map.of());
     }

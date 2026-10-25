@@ -234,7 +234,6 @@ public class Publish extends AbstractMqttConnection
             runContext.metric(Counter.of("records", count, "topic", rTopic));
             runContext.metric(Timer.of("duration", Duration.ofNanos(System.nanoTime() - startTime)));
         } finally {
-            // Close on failures too, so a rejected publish does not leave the client connected
             connection.close();
         }
 
