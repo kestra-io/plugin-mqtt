@@ -4,7 +4,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.ConcurrentModificationException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -156,7 +158,7 @@ public class MqttV5Service implements MqttInterface {
                         .qos(message.getQos())
                         .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
                         .retain(message.isRetained())
-                        .properties(message.getProperties().getValidProperties())
+                        .properties(extractMessageProperties(message.getProperties()))
                         .responseTopic(message.getProperties().getResponseTopic())
                         .correlationData(encodeCorrelationData(message.getProperties().getCorrelationData()))
                         .build()
@@ -185,6 +187,30 @@ public class MqttV5Service implements MqttInterface {
      * it is surfaced as Base64. {@link MqttV5Service#decodeCorrelationData(String)} is its inverse,
      * which is what lets a responder echo the value it received unchanged.
      */
+    static Map<String, Object> extractMessageProperties(MqttProperties properties) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        if (!properties.getUserProperties().isEmpty()) {
+            Map<String, String> userProperties = new LinkedHashMap<>();
+            properties.getUserProperties().forEach(property -> userProperties.put(property.getKey(), property.getValue()));
+            result.put("userProperties", userProperties);
+        }
+
+        if (properties.getContentType() != null) {
+            result.put("contentType", properties.getContentType());
+        }
+
+        if (properties.getMessageExpiryInterval() != null) {
+            result.put("messageExpiryInterval", properties.getMessageExpiryInterval());
+        }
+
+        if (properties.getPayloadFormat()) {
+            result.put("payloadFormat", true);
+        }
+
+        return result;
+    }
+
     private static String encodeCorrelationData(byte[] correlationData) {
         return correlationData == null ? null : Base64.getEncoder().encodeToString(correlationData);
     }

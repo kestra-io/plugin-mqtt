@@ -1,5 +1,6 @@
 package io.kestra.plugin.mqtt.services;
 
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.paho.mqttv5.client.IMqttToken;
@@ -9,6 +10,8 @@ import org.eclipse.paho.mqttv5.client.internal.Token;
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence;
 import org.eclipse.paho.mqttv5.common.MqttException;
 import org.eclipse.paho.mqttv5.common.MqttMessage;
+import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
+import org.eclipse.paho.mqttv5.common.packet.UserProperty;
 import org.junit.jupiter.api.Test;
 
 import io.kestra.core.junit.annotations.KestraTest;
@@ -23,7 +26,10 @@ import jakarta.inject.Inject;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @KestraTest
 class MqttV5ServiceTest {
@@ -59,6 +65,32 @@ class MqttV5ServiceTest {
         service.client = new MqttAsyncClient("tcp://localhost:1883", "test-client", new MemoryPersistence());
 
         assertDoesNotThrow(service::close);
+    }
+
+    @Test
+    void shouldExtractActualMqttV5Properties() {
+        var properties = new MqttProperties();
+        properties.setUserProperties(List.of(
+            new UserProperty("source", "sensor"),
+            new UserProperty("environment", "production")
+        ));
+        properties.setContentType("application/json");
+        properties.setMessageExpiryInterval(60L);
+        properties.setPayloadFormat(true);
+
+        var result = MqttV5Service.extractMessageProperties(properties);
+
+        assertEquals("application/json", result.get("contentType"));
+        assertEquals(60L, result.get("messageExpiryInterval"));
+        assertTrue((Boolean) result.get("payloadFormat"));
+
+        assertEquals(Map.of("source", "sensor", "environment", "production"), result.get("userProperties"));
+    }
+
+    @Test
+    void shouldReturnEmptyPropertiesWhenNoneAreSet() {
+        var result = MqttV5Service.extractMessageProperties(new MqttProperties());
+        assertTrue(result.isEmpty());
     }
 
     private RunContext runContext() {
