@@ -1,3 +1,4 @@
+
 package io.kestra.plugin.mqtt.services;
 
 import java.util.List;
@@ -27,7 +28,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,7 +72,8 @@ class MqttV5ServiceTest {
         var properties = new MqttProperties();
         properties.setUserProperties(List.of(
             new UserProperty("source", "sensor"),
-            new UserProperty("environment", "production")
+            new UserProperty("environment", "production"),
+            new UserProperty("source", "backup")
         ));
         properties.setContentType("application/json");
         properties.setMessageExpiryInterval(60L);
@@ -84,7 +85,13 @@ class MqttV5ServiceTest {
         assertEquals(60L, result.get("messageExpiryInterval"));
         assertTrue((Boolean) result.get("payloadFormat"));
 
-        assertEquals(Map.of("source", "sensor", "environment", "production"), result.get("userProperties"));
+        assertEquals(
+            Map.of(
+                "source", List.of("sensor", "backup"),
+                "environment", List.of("production")
+            ),
+            result.get("userProperties")
+        );
     }
 
     @Test

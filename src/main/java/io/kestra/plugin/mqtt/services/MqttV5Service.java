@@ -1,7 +1,9 @@
+
 package io.kestra.plugin.mqtt.services;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.ConcurrentModificationException;
 import java.util.LinkedHashMap;
@@ -182,17 +184,17 @@ public class MqttV5Service implements MqttInterface {
         }, props);
     }
 
-    /**
-     * Correlation data is binary on the wire, and a byte array is unusable in a flow expression, so
-     * it is surfaced as Base64. {@link MqttV5Service#decodeCorrelationData(String)} is its inverse,
-     * which is what lets a responder echo the value it received unchanged.
-     */
     static Map<String, Object> extractMessageProperties(MqttProperties properties) {
-        Map<String, Object> result = new LinkedHashMap<>();
+        var result = new LinkedHashMap<String, Object>();
 
         if (!properties.getUserProperties().isEmpty()) {
-            Map<String, String> userProperties = new LinkedHashMap<>();
-            properties.getUserProperties().forEach(property -> userProperties.put(property.getKey(), property.getValue()));
+            var userProperties = new LinkedHashMap<String, List<String>>();
+
+            properties.getUserProperties().forEach(property ->
+                userProperties.computeIfAbsent(property.getKey(), key -> new ArrayList<>())
+                    .add(property.getValue())
+            );
+
             result.put("userProperties", userProperties);
         }
 
@@ -211,6 +213,11 @@ public class MqttV5Service implements MqttInterface {
         return result;
     }
 
+    /**
+     * Correlation data is binary on the wire, and a byte array is unusable in a flow expression, so
+     * it is surfaced as Base64. {@link MqttV5Service#decodeCorrelationData(String)} is its inverse,
+     * which is what lets a responder echo the value it received unchanged.
+     */
     private static String encodeCorrelationData(byte[] correlationData) {
         return correlationData == null ? null : Base64.getEncoder().encodeToString(correlationData);
     }
