@@ -2,6 +2,7 @@ package io.kestra.plugin.mqtt;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -235,8 +236,19 @@ public class RealtimeTrigger extends AbstractTrigger implements RealtimeTriggerI
         @Schema(title = "The quality of service level of the message")
         private Integer qos;
 
-        @Schema(title = "The MQTT message properties")
-        private List<Byte> properties;
+        @Schema(
+            title = "The MQTT message properties",
+            description = """
+                MQTT 5 message properties:
+                - userProperties: A map of user-defined property names to lists of values. Lists preserve duplicate keys.
+                - contentType: The message content type.
+                - messageExpiryInterval: The message expiry interval in seconds.
+                - payloadFormat: The payload format indicator, represented as true when set.
+                Properties that are not present in the message are omitted from the map.
+                For MQTT 3.1.1 messages, the map is empty.
+                """
+        )
+        private Map<String, Object> properties;
 
         @Schema(title = "The message payload")
         private Object payload;

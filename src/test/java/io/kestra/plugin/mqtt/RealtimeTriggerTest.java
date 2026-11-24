@@ -2,15 +2,20 @@ package io.kestra.plugin.mqtt;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.paho.mqttv5.client.MqttClient;
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence;
+import org.eclipse.paho.mqttv5.common.MqttMessage;
+import org.eclipse.paho.mqttv5.common.packet.MqttProperties;
 import org.eclipse.paho.mqttv5.common.packet.MqttReturnCode;
+import org.eclipse.paho.mqttv5.common.packet.UserProperty;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
@@ -33,6 +38,7 @@ import reactor.core.scheduler.Schedulers;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @KestraTest(startRunner = true, startScheduler = true)
@@ -105,6 +111,85 @@ class RealtimeTriggerTest {
         // the trigger's Output is a hand-written mirror of Message, so these two assert the copy
         assertThat(variables.get("responseTopic"), is(responseTopic));
         assertThat(variables.get("correlationData"), is(correlationData));
+    }
+
+    @Test
+    void v5ShouldExposeActualMessageProperties() throws Exception {
+        var topic = "test/realtime/properties/" + IdUtils.create();
+
+        var properties = new MqttProperties();
+        properties.setUserProperties(List.of(
+            new UserProperty("source", "sensor"),
+            new UserProperty("environment", "production"),
+            new UserProperty("source", "backup")
+        ));
+        properties.setContentType("application/json");
+
+        var message = new MqttMessage(
+            "{\"message\":\"hello properties\"}".getBytes(StandardCharsets.UTF_8)
+        );
+        message.setQos(1);
+        message.setRetained(true);
+        message.setProperties(properties);
+
+        var publisher = new MqttClient(
+            "tcp://127.0.0.1:1883",
+            IdUtils.create(),
+            new MemoryPersistence()
+        );
+
+        try {
+            publisher.connect();
+            publisher.publish(topic, message);
+        } finally {
+            if (publisher.isConnected()) {
+                publisher.disconnect();
+            }
+            publisher.close();
+        }
+
+        var trigger = RealtimeTrigger.builder()
+            .id(IdUtils.create())
+            .type(RealtimeTrigger.class.getName())
+            .server(Property.ofValue("tcp://127.0.0.1:1883"))
+            .clientId(Property.ofValue(IdUtils.create()))
+            .topic(topic)
+            .serdeType(Property.ofValue(SerdeType.JSON))
+            .mqttVersion(Property.ofValue(AbstractMqttConnection.Version.V5))
+            .build();
+
+        var mock = TestsUtils.mockTrigger(runContextFactory, trigger);
+        var received = new CountDownLatch(1);
+        var result = new AtomicReference<Execution>();
+
+        var evaluation = Flux.from(trigger.evaluate(mock.getKey(), mock.getValue()))
+            .doOnNext(execution -> {
+                result.set(execution);
+                received.countDown();
+            })
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe();
+
+        try {
+            assertThat(received.await(30, TimeUnit.SECONDS), is(true));
+
+            var variables = result.get().getTrigger().getVariables();
+
+            @SuppressWarnings("unchecked")
+            var actualProperties = (Map<String, Object>) variables.get("properties");
+
+            assertEquals("application/json", actualProperties.get("contentType"));
+            assertEquals(
+                Map.of(
+                    "source", List.of("sensor", "backup"),
+                    "environment", List.of("production")
+                ),
+                actualProperties.get("userProperties")
+            );
+        } finally {
+            trigger.stop();
+            evaluation.dispose();
+        }
     }
 
     @Test

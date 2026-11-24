@@ -2,9 +2,12 @@ package io.kestra.plugin.mqtt.services;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.ConcurrentModificationException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -156,7 +159,7 @@ public class MqttV5Service implements MqttInterface {
                         .qos(message.getQos())
                         .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
                         .retain(message.isRetained())
-                        .properties(message.getProperties().getValidProperties())
+                        .properties(extractMessageProperties(message.getProperties()))
                         .responseTopic(message.getProperties().getResponseTopic())
                         .correlationData(encodeCorrelationData(message.getProperties().getCorrelationData()))
                         .build()
@@ -178,6 +181,35 @@ public class MqttV5Service implements MqttInterface {
                 callbackTracker.exit();
             }
         }, props);
+    }
+
+    static Map<String, Object> extractMessageProperties(MqttProperties properties) {
+        var result = new LinkedHashMap<String, Object>();
+
+        if (!properties.getUserProperties().isEmpty()) {
+            var userProperties = new LinkedHashMap<String, List<String>>();
+
+            properties.getUserProperties().forEach(property ->
+                userProperties.computeIfAbsent(property.getKey(), key -> new ArrayList<>())
+                    .add(property.getValue())
+            );
+
+            result.put("userProperties", userProperties);
+        }
+
+        if (properties.getContentType() != null) {
+            result.put("contentType", properties.getContentType());
+        }
+
+        if (properties.getMessageExpiryInterval() != null) {
+            result.put("messageExpiryInterval", properties.getMessageExpiryInterval());
+        }
+
+        if (properties.getPayloadFormat()) {
+            result.put("payloadFormat", true);
+        }
+
+        return result;
     }
 
     /**
