@@ -3,6 +3,7 @@ package io.kestra.plugin.mqtt.services;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import javax.net.ssl.SSLSocketFactory;
@@ -95,6 +96,7 @@ public class MqttV3Service implements MqttInterface {
                         .qos(message.getQos())
                         .payload(runContext.render(subscribe.getSerdeType()).as(SerdeType.class).orElseThrow().deserialize(message.getPayload()))
                         .retain(message.isRetained())
+                        .properties(Map.of())
                         .build()
                 );
                 client.messageArrivedComplete(message.getId(), message.getQos());

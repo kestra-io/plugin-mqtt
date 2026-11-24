@@ -1,4 +1,3 @@
-
 package io.kestra.plugin.mqtt;
 
 import java.time.Duration;

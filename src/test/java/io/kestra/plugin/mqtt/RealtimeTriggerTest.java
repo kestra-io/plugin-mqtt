@@ -1,4 +1,3 @@
-
 package io.kestra.plugin.mqtt;
 
 import java.nio.charset.StandardCharsets;
@@ -50,7 +49,6 @@ class RealtimeTriggerTest {
 
     @Inject
     protected LocalFlowRepositoryLoader repositoryLoader;
-
     @Inject
     private RunContextFactory runContextFactory;
 
@@ -106,6 +104,7 @@ class RealtimeTriggerTest {
         Map<String, String> payload = (Map<String, String>) variables.get("payload");
 
         assertThat(payload.size(), is(2));
+
         assertThat(payload.get("message"), is(messageText));
         assertThat(payload.get("notification"), is(triggerText));
 
